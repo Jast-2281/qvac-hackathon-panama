@@ -152,6 +152,10 @@ function perfTexto(r) {
   return partes.join(' · ');
 }
 
+function confianzaTexto(r) {
+  return r.metodo === 'keywords' ? 'coincidencia directa' : `confianza ${Math.round(r.confianza * 100)}%`;
+}
+
 function pintar(r) {
   if (r.error) { $('#salida').innerHTML = `<div class="negado"><p>No se pudo calcular.</p><span>${r.error}</span></div>`; return; }
 
@@ -173,7 +177,7 @@ function pintar(r) {
   $('#salida').innerHTML = `<div class="recibo">
     <div class="sello ${esReex ? 'r' : 'n'}">${esReex ? 'Reexportación' : 'Nacionalización'}</div>
     <p class="prod">${r.categoria.nombre}</p>
-    <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}% · método ${r.metodo} · confianza ${Math.round(r.confianza * 100)}%</p>
+    <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}% · método ${r.metodo} · ${confianzaTexto(r)}</p>
     <table>
       ${fila(`Valor CIF${r.tipoValor === 'FOB' ? ' (estimado desde FOB)' : ''}`, c.valorCIF)}
       ${fila('DAI', c.dai)}

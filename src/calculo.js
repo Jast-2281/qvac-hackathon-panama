@@ -42,6 +42,12 @@ export function calcularImportacion({
   if (!Number.isFinite(valorCIF) || valorCIF < 0) {
     throw new Error('valorCIF debe ser un numero positivo');
   }
+  if (!Number.isFinite(gastosFijos) || gastosFijos < 0) {
+    throw new Error('gastosFijos debe ser un numero positivo');
+  }
+  if (regimen !== 'nacionalizacion' && regimen !== 'reexportacion') {
+    throw new Error('regimen debe ser "nacionalizacion" o "reexportacion"');
+  }
 
   // Reexportacion: la mercancia entra a la Zona Libre con destino final el
   // extranjero. No causa arancel ni ITBMS panameno. Solo quedan los gastos.

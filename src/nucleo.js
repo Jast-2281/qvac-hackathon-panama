@@ -35,6 +35,19 @@ export async function detener() {
 export const meta = () => tabla._meta;
 export const verificadas = () => tabla.categorias.filter((c) => c.verificado);
 
+function normalizar(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function escaparRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function contieneKeyword(textoNormalizado, keyword) {
+  const k = escaparRegex(normalizar(keyword));
+  return new RegExp(`(?<![a-z0-9])${k}(?![a-z0-9])`).test(textoNormalizado);
+}
+
 function schema() {
   return {
     type: 'json_schema',
@@ -81,16 +94,16 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
 
   let clasificacion, rendimiento, metodo;
 
-  const t = descripcion.toLowerCase();
-  const coincidencias = tabla.categorias.filter((c) => c.keywords.some((k) => t.includes(k)));
+  const t = normalizar(descripcion);
+  const coincidencias = tabla.categorias.filter((c) => c.keywords.some((k) => contieneKeyword(t, k)));
 
   if (coincidencias.length === 1) {
     const cat0 = coincidencias[0];
-    clasificacion = { producto_normalizado: descripcion, categoria_id: cat0.id, confianza: 1 };
+    clasificacion = { producto_normalizado: descripcion, categoria_id: cat0.id, confianza: null };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
     metodo = 'keywords';
   } else if (mock) {
-    const hit = tabla.categorias.find((c) => c.keywords.some((k) => t.includes(k)));
+    const hit = tabla.categorias.find((c) => c.keywords.some((k) => contieneKeyword(t, k)));
     clasificacion = { producto_normalizado: descripcion, categoria_id: hit ? hit.id : 'otros', confianza: hit ? 0.9 : 0.2 };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: true };
     metodo = 'mock';

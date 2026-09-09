@@ -41,6 +41,8 @@ createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/api/estimar') {
     try {
       const cuerpo = JSON.parse(await leer(req));
+      const errorEntrada = validarEntrada(cuerpo);
+      if (errorEntrada) return json(res, 400, { error: errorEntrada });
       const r = await nucleo.estimar({ ...cuerpo, mock: MOCK });
       return json(res, 200, r);
     } catch (e) {
@@ -49,7 +51,16 @@ createServer(async (req, res) => {
   }
 
   res.writeHead(404).end('no encontrado');
-}).listen(PUERTO, () => console.log(`▸ Zarpe en http://localhost:${PUERTO}`));
+}).listen(PUERTO, '127.0.0.1', () => console.log(`▸ Zarpe en http://localhost:${PUERTO}`));
+
+function validarEntrada({ valor, gastosFijos = 0, regimen }) {
+  if (!Number.isFinite(valor) || valor < 0) return 'valor debe ser un numero positivo';
+  if (!Number.isFinite(gastosFijos) || gastosFijos < 0) return 'gastosFijos debe ser un numero positivo';
+  if (regimen !== 'nacionalizacion' && regimen !== 'reexportacion') {
+    return 'regimen debe ser "nacionalizacion" o "reexportacion"';
+  }
+  return null;
+}
 
 function json(res, code, obj) {
   res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' });

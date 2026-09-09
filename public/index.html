@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zarpe</title>
+<style>
+  :root{
+    --papel:#E7E9E1; --papel-2:#DDE0D6; --tinta:#1A211E; --tenue:#5E6660;
+    --linea:#B4BBAF; --nac:#8C2F2A; --reex:#1C5A4C;
+    --serif:"Iowan Old Style","Charter","Palatino",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --mono:"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--papel-2);color:var(--tinta);font-family:var(--sans);
+       display:flex;justify-content:center;padding:20px 12px 64px}
+  main{width:100%;max-width:412px;background:var(--papel);
+       border:1px solid var(--linea);box-shadow:0 1px 0 var(--linea),0 14px 34px rgba(26,33,30,.13)}
+  .franja{display:flex;align-items:center;gap:8px;padding:9px 16px;
+          border-bottom:1px solid var(--linea);font:12px/1.3 var(--mono);color:var(--tenue)}
+  .punto{width:8px;height:8px;border-radius:50%;background:var(--reex);flex:none}
+  .punto.off{background:var(--nac)}
+  header{padding:22px 16px 16px;border-bottom:1px solid var(--linea)}
+  h1{margin:0;font:400 40px/1 var(--serif);letter-spacing:-.01em}
+  header p{margin:6px 0 0;font-size:13.5px;color:var(--tenue);max-width:34ch}
+  form{padding:16px}
+  label{display:block;font-size:13px;margin:14px 0 5px;color:var(--tenue)}
+  label:first-child{margin-top:0}
+  textarea,input{width:100%;padding:10px;background:#fff;border:1px solid var(--linea);
+       border-radius:0;font:15px/1.4 var(--sans);color:var(--tinta)}
+  textarea{resize:vertical;min-height:66px}
+  input[type=number]{font-family:var(--mono)}
+  .fila{display:grid;grid-template-columns:1fr 92px;gap:8px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--linea);background:#fff}
+  .seg button{padding:11px 6px;border:0;background:#fff;font:13.5px var(--sans);
+       color:var(--tenue);cursor:pointer}
+  .seg button+button{border-left:1px solid var(--linea)}
+  .seg button[aria-pressed=true]{background:var(--tinta);color:var(--papel)}
+  .enviar{width:100%;margin-top:20px;padding:14px;border:0;background:var(--tinta);
+       color:var(--papel);font:15px var(--sans);cursor:pointer}
+  .enviar:disabled{opacity:.45;cursor:default}
+  :focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
+
+  #salida{border-top:1px solid var(--linea)}
+  .vacio{padding:26px 16px;color:var(--tenue);font-size:13.5px}
+  .recibo{padding:18px 16px;position:relative}
+  .sello{position:absolute;top:14px;right:14px;transform:rotate(-7deg);
+       border:2px solid currentColor;padding:3px 8px;font:600 11px/1 var(--mono);
+       letter-spacing:.09em;text-transform:uppercase;opacity:.9}
+  .sello.n{color:var(--nac)} .sello.r{color:var(--reex)}
+  @media (prefers-reduced-motion:no-preference){
+    .sello{animation:caer .3s cubic-bezier(.2,1.4,.5,1) both}
+    @keyframes caer{from{transform:rotate(-22deg) scale(1.5);opacity:0}}
+  }
+  .prod{font:400 21px/1.25 var(--serif);margin:0 84px 2px 0}
+  .frac{font:12px var(--mono);color:var(--tenue);margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td{padding:5px 0;border-bottom:1px dotted var(--linea)}
+  td:last-child{text-align:right;font-family:var(--mono)}
+  tr.total td{border-bottom:0;border-top:2px solid var(--tinta);padding-top:9px;
+       font-size:15px;font-weight:600}
+  tr.total td:last-child{font-size:20px}
+  .contra{margin:14px 0 0;padding:11px 12px;background:var(--papel-2);
+       border-left:3px solid var(--tinta);font-size:13.5px;line-height:1.45}
+  .contra b{font-family:var(--mono);font-weight:600}
+  .perf{margin:12px 0 0;font:11.5px/1.5 var(--mono);color:var(--tenue)}
+  .aviso{margin:12px 0 0;font-size:12px;color:var(--tenue);line-height:1.45}
+  .negado{padding:18px 16px}
+  .negado p{margin:0 0 8px;font:400 18px/1.3 var(--serif)}
+  .negado span{font-size:13.5px;color:var(--tenue)}
+</style>
+
+<main>
+  <div class="franja"><span class="punto off" id="pt"></span><span id="fr">iniciando…</span></div>
+
+  <header>
+    <h1>Zarpe</h1>
+    <p>Cuánto cuesta de verdad sacar una carga. Funciona sin señal, dentro de la bodega.</p>
+  </header>
+
+  <form id="f">
+    <label for="d">Qué estás trayendo</label>
+    <textarea id="d" placeholder="200 cajas de whisky escocés desde Escocia"></textarea>
+
+    <label for="v">Valor declarado</label>
+    <div class="fila">
+      <input id="v" type="number" min="0" step="1" value="5000">
+      <div class="seg" role="group">
+        <button type="button" data-tv="CIF" aria-pressed="true">CIF</button>
+        <button type="button" data-tv="FOB" aria-pressed="false">FOB</button>
+      </div>
+    </div>
+
+    <label for="g">Gastos de agente y puerto</label>
+    <input id="g" type="number" min="0" step="1" value="400">
+
+    <label>A dónde va la mercancía</label>
+    <div class="seg" role="group">
+      <button type="button" data-rg="reexportacion" aria-pressed="true">Sale del país</button>
+      <button type="button" data-rg="nacionalizacion" aria-pressed="false">Se queda en Panamá</button>
+    </div>
+
+    <button class="enviar" id="b" disabled>Calcular</button>
+  </form>
+
+  <section id="salida"><div class="vacio">Describe la carga y calcula. Nada de lo que escribas sale de esta máquina.</div></section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let tipoValor = 'CIF', regimen = 'reexportacion';
+const money = (n) => n.toLocaleString('es-PA',{style:'currency',currency:'USD'});
+
+document.querySelectorAll('[data-tv]').forEach(b => b.onclick = () => {
+  tipoValor = b.dataset.tv;
+  document.querySelectorAll('[data-tv]').forEach(o => o.setAttribute('aria-pressed', o === b));
+});
+document.querySelectorAll('[data-rg]').forEach(b => b.onclick = () => {
+  regimen = b.dataset.rg;
+  document.querySelectorAll('[data-rg]').forEach(o => o.setAttribute('aria-pressed', o === b));
+});
+
+fetch('/api/estado').then(r => r.json()).then(e => {
+  $('#pt').classList.remove('off');
+  $('#fr').textContent = `${e.modelo} · en este equipo · ${e.categorias.length} categorías verificadas`;
+  $('#b').disabled = false;
+});
+
+$('#f').onsubmit = async (ev) => {
+  ev.preventDefault();
+  const d = $('#d').value.trim();
+  if (!d) return;
+  $('#b').disabled = true; $('#b').textContent = 'Calculando…';
+  try {
+    const r = await fetch('/api/estimar', {
+      method: 'POST', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ descripcion: d, valor: +$('#v').value, tipoValor, regimen, gastosFijos: +$('#g').value })
+    }).then(x => x.json());
+    pintar(r);
+  } finally {
+    $('#b').disabled = false; $('#b').textContent = 'Calcular';
+  }
+};
+
+function pintar(r) {
+  if (r.error) { $('#salida').innerHTML = `<div class="negado"><p>No se pudo calcular.</p><span>${r.error}</span></div>`; return; }
+
+  if (!r.disponible) {
+    $('#salida').innerHTML = `<div class="negado">
+      <p>Zarpe no responde esto.</p>
+      <span>${r.motivo} Clasificó como <b>${r.categoria.nombre}</b>.</span></div>`;
+    return;
+  }
+
+  const c = r.calculo, o = r.contrafactual, esReex = c.regimen === 'reexportacion';
+  const fila = (k, v) => `<tr><td>${k}</td><td>${money(v)}</td></tr>`;
+  const perf = r.rendimiento.mock ? 'modo mock — sin inferencia'
+    : `${r.rendimiento.ms_total} ms · primer token ${r.rendimiento.ttft_ms} ms · ${r.rendimiento.tokens_por_seg} tok/s`;
+
+  $('#salida').innerHTML = `<div class="recibo">
+    <div class="sello ${esReex ? 'r' : 'n'}">${esReex ? 'Reexportación' : 'Nacionalización'}</div>
+    <p class="prod">${r.categoria.nombre}</p>
+    <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}%</p>
+    <table>
+      ${fila(`Valor CIF${r.tipoValor === 'FOB' ? ' (estimado desde FOB)' : ''}`, c.valorCIF)}
+      ${fila('DAI', c.dai)}
+      ${c.isc ? fila('ISC', c.isc) : ''}
+      ${fila('ITBMS', c.itbms)}
+      ${fila('Agente y puerto', c.gastosFijos)}
+      <tr class="total"><td>Costo total</td><td>${money(c.costoTotal)}</td></tr>
+    </table>
+    ${c.motivo ? `<p class="contra">${c.motivo}</p>` : ''}
+    <p class="contra">Si en cambio ${esReex ? 'se queda en Panamá' : 'sale del país'}, el costo sería
+      <b>${money(o.costoTotal)}</b> — una diferencia de <b>${money(Math.abs(o.costoTotal - c.costoTotal))}</b>.</p>
+    <p class="perf">${perf}</p>
+    <p class="aviso">${r.aviso}</p>
+  </div>`;
+}
+</script>

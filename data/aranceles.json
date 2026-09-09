@@ -1,0 +1,159 @@
+{
+  "_meta": {
+    "jurisdiccion": "Panama",
+    "fuente": "Herramienta Interactiva del Arancel Nacional, Autoridad Nacional de Aduanas (https://aranceles.ana.gob.pa/), panel 'Tributos Arancelarios'. Tratados aplicables ano 2025.",
+    "estructura_codigo": "Arancel Nacional de Importacion de 12 digitos (Decreto de Gabinete 27 de 2019).",
+    "tributos": {
+      "DAI": "Derecho Arancelario a la Importacion, % sobre CIF",
+      "ITBMS": "% sobre CIF + DAI + demas gravamenes aduaneros",
+      "ISC": "Impuesto Selectivo al Consumo, %",
+      "ICCDP": "%"
+    },
+    "supuesto_pendiente": "Falta confirmar si el ISC entra en la base del ITBMS. Hoy el calculo lo EXCLUYE de esa base. Verificar en el Codigo Fiscal art. 1057-V antes de la demo.",
+    "alcance_declarado": "Solo tasas NMF (sin tratado preferencial). El origen de la mercancia puede reducir el DAI via tratados; fuera del alcance de esta version y declarado como tal.",
+    "de_minimis_cif_usd": 100,
+    "estimacion_cif_desde_fob": {
+      "flete_pct": 13.5,
+      "seguro_pct": 1.5
+    },
+    "regimenes": {
+      "reexportacion": "Mercancia introducida a la Zona Libre de Colon con destino final el extranjero: no causa tributos de importacion panamenos.",
+      "nacionalizacion": "Mercancia que entra a territorio fiscal panameno: causa DAI + ITBMS (+ ISC/ICCDP si aplican)."
+    }
+  },
+  "categorias": [
+    {
+      "id": "otros",
+      "nombre": "No clasificable con la informacion disponible",
+      "keywords": [],
+      "fraccion": null,
+      "dai_pct": null,
+      "itbms_pct": null,
+      "isc_pct": null,
+      "iccdp_pct": null,
+      "verificado": false,
+      "motivo_no_disponible": "Sin categoria verificada para esta descripcion."
+    },
+    {
+      "id": "cigarrillos",
+      "nombre": "Cigarrillos que contengan tabaco",
+      "keywords": [
+        "cigarrillo",
+        "cigarrillos",
+        "cajetilla",
+        "tabaco",
+        "marlboro",
+        "cigarros"
+      ],
+      "fraccion": "240220000000",
+      "dai_pct": 15,
+      "itbms_pct": 15,
+      "isc_pct": 0,
+      "iccdp_pct": 0,
+      "verificado": true,
+      "verificado_en": "2026-09-09"
+    },
+    {
+      "id": "licores",
+      "nombre": "Licores",
+      "keywords": [
+        "licor",
+        "licores",
+        "ron",
+        "vodka",
+        "ginebra",
+        "tequila",
+        "aguardiente",
+        "botella",
+        "caja de whisky",
+        "whisky",
+        "whiskey",
+        "escoces"
+      ],
+      "fraccion": "220870000000",
+      "dai_pct": 15,
+      "itbms_pct": 10,
+      "isc_pct": 0,
+      "iccdp_pct": 0,
+      "verificado": true,
+      "verificado_en": "2026-09-09"
+    },
+    {
+      "id": "celulares",
+      "nombre": "Telefonos moviles (celulares) y otras redes inalambricas",
+      "keywords": [
+        "celular",
+        "celulares",
+        "telefono movil",
+        "smartphone",
+        "iphone",
+        "android"
+      ],
+      "fraccion": "851714000000",
+      "dai_pct": null,
+      "itbms_pct": null,
+      "isc_pct": null,
+      "iccdp_pct": null,
+      "verificado": false
+    },
+    {
+      "id": "camisetas",
+      "nombre": "Camisetas de punto, de algodon",
+      "keywords": [
+        "camiseta",
+        "camisetas",
+        "t-shirt",
+        "playera",
+        "polo",
+        "algodon"
+      ],
+      "fraccion": "610910000000",
+      "dai_pct": 10,
+      "itbms_pct": 7,
+      "isc_pct": 0,
+      "iccdp_pct": 0,
+      "verificado": true,
+      "verificado_en": "2026-09-09"
+    },
+    {
+      "id": "parlantes",
+      "nombre": "Altavoces (parlantes, bocinas)",
+      "keywords": [
+        "parlante",
+        "parlantes",
+        "bocina",
+        "bocinas",
+        "altavoz",
+        "bluetooth",
+        "speaker"
+      ],
+      "fraccion": null,
+      "_buscar_codigo_sa": "851821 o 851822",
+      "dai_pct": null,
+      "itbms_pct": null,
+      "isc_pct": null,
+      "iccdp_pct": null,
+      "verificado": false
+    },
+    {
+      "id": "perfumes",
+      "nombre": "Perfumes y aguas de tocador",
+      "keywords": [
+        "perfume",
+        "perfumes",
+        "colonia",
+        "fragancia",
+        "agua de tocador",
+        "eau de parfum"
+      ],
+      "fraccion": null,
+      "_buscar_codigo_sa": "330300",
+      "_ojo": "NO es 3302 (insumo industrial) ni 3307 (toallitas). El perfume terminado es 3303.",
+      "dai_pct": null,
+      "itbms_pct": null,
+      "isc_pct": null,
+      "iccdp_pct": null,
+      "verificado": false
+    }
+  ]
+}

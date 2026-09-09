@@ -1,16 +1,15 @@
-# [Nombre del proyecto — pendiente, se define el 8-9 de sept.]
+# Zarpe
 
 > Este README arranca como plantilla. Se completa con el proyecto real durante
 > el hackathon — no antes, conforme al Art. 11(b) del reglamento.
 
 ## Qué es
 
-[Una frase: qué problema resuelve y para quién.]
+Zarpe calcula, en el dispositivo y sin conexión, el arancel estimado, el ITBMS y el costo total de importar un producto — pensado para comerciantes, importadores y agentes de aduana que trabajan en la Zona Libre de Colón, donde la conectividad es intermitente.
 
 ## Desafío corporativo
 
-[Si aplica a uno de los tres permitidos — Ovnicom, Dojo Coding o SENACYT —
-nómbralo acá. Nunca Philips.]
+Compite primero por el ranking general (Track 3, tema libre). Si al cierre el proyecto encaja con uno de los tres desafíos corporativos permitidos (Ovnicom, Dojo Coding, SENACYT) según su brief publicado, se declara acá. Nunca el de Philips.
 
 ## Cómo correrlo
 

@@ -7,6 +7,7 @@
  */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { validarEntrada } from './validar.js';
 
 const MOCK = process.argv.includes('--mock');
 const PUERTO = 4173;
@@ -31,7 +32,7 @@ createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/estado') {
     return json(res, 200, {
       mock: MOCK,
-      modelo: MOCK ? 'mock' : 'LLAMA_3_2_1B_INST_Q4_0',
+      modelo: MOCK ? 'mock' : nucleo.modeloActivo(),
       msCarga: estado.msCarga,
       categorias: nucleo.verificadas().map((c) => ({ id: c.id, nombre: c.nombre, fraccion: c.fraccion })),
       alcance: nucleo.meta().alcance_declarado,
@@ -39,10 +40,17 @@ createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && req.url === '/api/estimar') {
+    let cuerpo;
     try {
-      const cuerpo = JSON.parse(await leer(req));
-      const errorEntrada = validarEntrada(cuerpo);
-      if (errorEntrada) return json(res, 400, { error: errorEntrada });
+      cuerpo = JSON.parse(await leer(req));
+    } catch (e) {
+      return json(res, 400, { error: `Solicitud invalida: ${e.message}` });
+    }
+
+    const errorEntrada = validarEntrada(cuerpo);
+    if (errorEntrada) return json(res, 400, { error: errorEntrada });
+
+    try {
       const r = await nucleo.estimar({ ...cuerpo, mock: MOCK });
       return json(res, 200, r);
     } catch (e) {
@@ -53,14 +61,7 @@ createServer(async (req, res) => {
   res.writeHead(404).end('no encontrado');
 }).listen(PUERTO, '127.0.0.1', () => console.log(`▸ Zarpe en http://localhost:${PUERTO}`));
 
-function validarEntrada({ valor, gastosFijos = 0, regimen }) {
-  if (!Number.isFinite(valor) || valor < 0) return 'valor debe ser un numero positivo';
-  if (!Number.isFinite(gastosFijos) || gastosFijos < 0) return 'gastosFijos debe ser un numero positivo';
-  if (regimen !== 'nacionalizacion' && regimen !== 'reexportacion') {
-    return 'regimen debe ser "nacionalizacion" o "reexportacion"';
-  }
-  return null;
-}
+const TAMANO_MAX_BODY = 10_000;
 
 function json(res, code, obj) {
   res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' });
@@ -68,6 +69,14 @@ function json(res, code, obj) {
 }
 function leer(req) {
   return new Promise((ok, no) => {
-    let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => ok(d)); req.on('error', no);
+    let d = '';
+    let excedido = false;
+    req.on('data', (c) => {
+      if (excedido) return;
+      d += c;
+      if (d.length > TAMANO_MAX_BODY) { excedido = true; no(new Error('cuerpo demasiado grande')); }
+    });
+    req.on('end', () => { if (!excedido) ok(d); });
+    req.on('error', no);
   });
 }

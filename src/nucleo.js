@@ -14,7 +14,10 @@ import { loadModel, LLAMA_3_2_1B_INST_Q4_0, QWEN3_600M_INST_Q4, completion, unlo
 import { calcularImportacion, estimarCIF, CategoriaNoVerificada } from './calculo.js';
 
 const MODELOS = { LLAMA_3_2_1B_INST_Q4_0, QWEN3_600M_INST_Q4 };
-const modeloSrc = MODELOS[process.env.ZARPE_MODELO] ?? LLAMA_3_2_1B_INST_Q4_0;
+const modeloNombre = MODELOS[process.env.ZARPE_MODELO] ? process.env.ZARPE_MODELO : 'LLAMA_3_2_1B_INST_Q4_0';
+const modeloSrc = MODELOS[modeloNombre];
+
+export const modeloActivo = () => modeloNombre;
 
 let modelId = null;
 let tabla = null;
@@ -43,9 +46,32 @@ function escaparRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const NEGACIONES = ['no', 'sin', 'nunca', 'tampoco', 'excepto'];
+
+function precedeNegacion(texto, indice) {
+  const antes = texto.slice(0, indice).trim().split(/\s+/).filter(Boolean);
+  return NEGACIONES.includes(antes.at(-1)) || NEGACIONES.includes(antes.at(-2));
+}
+
+// Coincide como palabra completa (no subcadena, ej. "ron" en "drones") y
+// descarta la coincidencia si el keyword esta negado justo antes (ej. "no son camisetas").
 function contieneKeyword(textoNormalizado, keyword) {
   const k = escaparRegex(normalizar(keyword));
-  return new RegExp(`(?<![a-z0-9])${k}(?![a-z0-9])`).test(textoNormalizado);
+  const re = new RegExp(`(?<![a-z0-9])${k}(?![a-z0-9])`, 'g');
+  let m;
+  while ((m = re.exec(textoNormalizado))) {
+    if (!precedeNegacion(textoNormalizado, m.index)) return true;
+  }
+  return false;
+}
+
+// Una categoria "coincide" por keywords solo si ademas no aparece ninguna de
+// sus palabras de exclusion (materia prima o material que contradice la
+// fraccion arancelaria de la categoria, ej. "poliester" para camisetas de algodon).
+function categoriaCoincide(textoNormalizado, categoria) {
+  const excluye = categoria.excluye ?? [];
+  if (excluye.some((k) => contieneKeyword(textoNormalizado, k))) return false;
+  return categoria.keywords.some((k) => contieneKeyword(textoNormalizado, k));
 }
 
 function schema() {
@@ -95,7 +121,7 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
   let clasificacion, rendimiento, metodo;
 
   const t = normalizar(descripcion);
-  const coincidencias = tabla.categorias.filter((c) => c.keywords.some((k) => contieneKeyword(t, k)));
+  const coincidencias = tabla.categorias.filter((c) => categoriaCoincide(t, c));
 
   if (coincidencias.length === 1) {
     const cat0 = coincidencias[0];
@@ -103,7 +129,7 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
     metodo = 'keywords';
   } else if (mock) {
-    const hit = tabla.categorias.find((c) => c.keywords.some((k) => contieneKeyword(t, k)));
+    const hit = tabla.categorias.find((c) => categoriaCoincide(t, c));
     clasificacion = { producto_normalizado: descripcion, categoria_id: hit ? hit.id : 'otros', confianza: hit ? 0.9 : 0.2 };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: true };
     metodo = 'mock';

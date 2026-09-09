@@ -85,10 +85,12 @@ superando el umbral de aceptación; LLAMA la dejó en 0.50 y el sistema bloqueó
 respuesta.
 
 Elegimos LLAMA por seguridad, no por acierto aparente. El enum obliga al modelo a
-elegir siempre una categoría existente de la lista — no puede responder "no sé" de
-forma estructural — así que el umbral de confianza es la única defensa real contra
-productos fuera de cobertura, y en esa prueba puntual LLAMA se comportó de forma
-más conservadora.
+elegir siempre una categoría existente de la lista, pero esa lista incluye "otros"
+como categoría de escape, y el prompt le indica explícitamente usarla cuando la
+descripción no corresponde con claridad a ninguna categoría cubierta. Aun así, el
+modelo puede sobrestimar su propia certeza, así que el umbral de confianza sigue
+siendo la defensa real contra productos fuera de cobertura, y en esa prueba puntual
+LLAMA se comportó de forma más conservadora.
 
 ## Limitaciones conocidas
 
@@ -98,6 +100,12 @@ más conservadora.
   verificar contra el Código Fiscal antes de tratarlo como definitivo.
 - Es una estimación orientativa contra el Arancel Nacional, no un dictamen oficial
   de clasificación arancelaria.
+- El atajo por keywords rechaza subcadenas (p. ej. "ron" dentro de "drones"),
+  negaciones ("no son camisetas") y contradicciones de material/forma para
+  camisetas (poliéster, rollos de tela). No detecta carga mixta en una misma
+  descripción (p. ej. "camisetas y zapatos") ni palabras usadas en un contexto
+  no literal (p. ej. "fundas para camisetas"); esos casos deberían resolverse
+  limitando cada consulta a un solo producto, no agregando más reglas de keywords.
 
 ## Evidencia de inferencia local
 

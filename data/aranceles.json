@@ -105,6 +105,23 @@
         "polo",
         "algodon"
       ],
+      "excluye": [
+        "poliester",
+        "nylon",
+        "nailon",
+        "licra",
+        "lycra",
+        "spandex",
+        "sintetico",
+        "rollo",
+        "rollos",
+        "tela",
+        "telas",
+        "fardo",
+        "fardos",
+        "bala",
+        "balas"
+      ],
       "fraccion": "610910000000",
       "dai_pct": 10,
       "itbms_pct": 7,

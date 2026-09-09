@@ -137,6 +137,8 @@ $('#f').onsubmit = async (ev) => {
       body: JSON.stringify({ descripcion: d, valor: +$('#v').value, tipoValor, regimen, gastosFijos: +$('#g').value })
     }).then(x => x.json());
     pintar(r);
+  } catch (e) {
+    $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
   } finally {
     $('#b').disabled = false; $('#b').textContent = 'Calcular';
   }

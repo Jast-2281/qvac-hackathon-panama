@@ -1,41 +1,109 @@
 # Zarpe
 
-> Este README arranca como plantilla. Se completa con el proyecto real durante
-> el hackathon — no antes, conforme al Art. 11(b) del reglamento.
+Cuánto cuesta de verdad sacar una carga — calculado en el dispositivo, sin señal.
 
 ## Qué es
 
-Zarpe calcula, en el dispositivo y sin conexión, el arancel estimado, el ITBMS y el costo total de importar un producto — pensado para comerciantes, importadores y agentes de aduana que trabajan en la Zona Libre de Colón, donde la conectividad es intermitente.
+Un comerciante, importador o agente de aduanas en la Zona Libre de Colón necesita
+saber, en el momento, cuánto le va a costar traer un producto — arancel, ITBMS,
+costo total. Esa decisión se toma casi siempre dentro de un depósito, y dentro de
+un depósito de la Zona Libre la señal falla justo cuando más se necesita.
 
-## Desafío corporativo
+Zarpe corre 100% en el dispositivo con QVAC. El usuario describe la carga en texto
+libre y la app responde con el arancel estimado, el ITBMS y el costo total, sin
+depender de conexión.
 
-Compite primero por el ranking general (Track 3, tema libre). Si al cierre el proyecto encaja con uno de los tres desafíos corporativos permitidos (Ovnicom, Dojo Coding, SENACYT) según su brief publicado, se declara acá. Nunca el de Philips.
+## Arquitectura y por qué
+
+El modelo QVAC tiene un único trabajo: clasificar el texto libre del usuario contra
+un **enum cerrado**, construido en tiempo real desde `data/aranceles.json`. La
+respuesta se fuerza con `responseFormat: json_schema` — el SDK convierte ese schema
+a gramática GBNF de llama.cpp, así que estructuralmente el modelo no puede devolver
+una categoría que no exista en la tabla.
+
+El cálculo de impuestos es aritmética determinista en `src/calculo.js`, sin ningún
+componente de IA: misma entrada, mismo resultado, siempre. El modelo nunca produce
+una tasa, un monto ni un impuesto — solo elige una categoría. Esa separación es el
+argumento central del proyecto: **Zarpe no puede alucinar un impuesto**, porque la
+única pieza que podría hacerlo (el modelo) nunca tiene la posibilidad de proponer un
+número.
+
+## La bifurcación de régimen
+
+La mercancía introducida a la Zona Libre de Colón con destino final el extranjero
+(reexportación) no causa DAI ni ITBMS panameño. La que se nacionaliza — entra a
+territorio fiscal panameño — sí los causa. Zarpe siempre calcula y muestra **las dos
+cifras**, para que la decisión de a dónde va la carga se tome con el costo real de
+ambos caminos delante, no solo del elegido.
 
 ## Cómo correrlo
 
+Requiere Node ≥ 22.17.
+
 ```bash
 npm install
-node index.js
+QVAC_CONFIG_PATH=./qvac.config.json node src/server.js
 ```
 
-## Declaración de base preexistente
+Servidor en `http://localhost:4173`.
 
-**Código previo al hackathon:** ninguno — este repositorio se creó el 7 de
-septiembre de 2026 solo con el andamiaje de entorno (verificación de Node,
-instalación del SDK, script de prueba). El producto se construye del 9 al 11.
+## Track
 
-**Plantillas públicas usadas:** ninguna.
+Zarpe se presenta únicamente al **Track 03 – Desafío General** ($6,000). No aplica
+a ningún track corporativo.
+
+## Base preexistente declarada (Art. 11.c)
+
+**Tabla de aranceles (`data/aranceles.json`):** los datos provienen de la
+Herramienta Interactiva del Arancel Nacional, Autoridad Nacional de Aduanas
+(https://aranceles.ana.gob.pa/), consultada el 9 de septiembre de 2026.
+
+**Conocimiento de dominio:** cómo se calcula el arancel, el público real y la
+terminología se informan de [tradefacilpanama.com](https://tradefacilpanama.com),
+proyecto propio anterior al hackathon. No se reutilizó código de ese proyecto —
+ni una línea.
+
+**Andamiaje previo al 9 de septiembre:** verificación de entorno Node/QVAC,
+instalación del SDK y un script de prueba (`index.js`), preparados el 7 de
+septiembre conforme al Art. 11(b) del reglamento.
+
+**Código del producto:** todo el código de este repositorio — núcleo de
+clasificación, cálculo, servidor e interfaz (`src/`, `public/`, `data/`) — se
+escribió el 9 de septiembre de 2026, dentro de la ventana de 48 horas.
 
 **Librerías de terceros:** `@qvac/sdk` (^0.19.0), con su propia licencia.
 
 **Asistentes de IA:** se usaron asistentes de programación basados en IA para
 escribir y depurar código, conforme al reglamento (Art. 11.d).
 
-**Inferencia:** toda la inferencia se ejecuta localmente mediante QVAC en el
-dispositivo. El proyecto no enruta inferencia a ninguna API en la nube.
-Verificado corriendo con el wifi apagado.
+## Decisiones técnicas
 
-**Construido durante las 48 horas:** [completar el 11 de septiembre]
+Comparamos `LLAMA_3_2_1B_INST_Q4_0` y `QWEN3_600M_INST_Q4` con el mismo prompt y el
+mismo schema. Con la frase "tres bicicletas de montaña" — un producto fuera de las
+categorías cubiertas — Qwen la clasificó como camisetas con confianza 0.96,
+superando el umbral de aceptación; LLAMA la dejó en 0.50 y el sistema bloqueó la
+respuesta.
+
+Elegimos LLAMA por seguridad, no por acierto aparente. El enum obliga al modelo a
+elegir siempre una categoría existente de la lista — no puede responder "no sé" de
+forma estructural — así que el umbral de confianza es la única defensa real contra
+productos fuera de cobertura, y en esa prueba puntual LLAMA se comportó de forma
+más conservadora.
+
+## Limitaciones conocidas
+
+- Solo 3 categorías con tributos verificados: cigarrillos, licores, camisetas.
+- Solo tasas NMF (nación más favorecida) — sin tratados preferenciales por origen.
+- Supuesto sin confirmar: el cálculo excluye el ISC de la base del ITBMS; falta
+  verificar contra el Código Fiscal antes de tratarlo como definitivo.
+- Es una estimación orientativa contra el Arancel Nacional, no un dictamen oficial
+  de clasificación arancelaria.
+
+## Evidencia de inferencia local
+
+`LLAMA_3_2_1B_INST_Q4_0` corriendo sobre Apple Silicon con aceleración Metal.
+Verificado con el flujo completo — carga de modelo, clasificación, cálculo — con el
+wifi apagado. Ninguna llamada de inferencia sale del equipo.
 
 ## Video de demostración
 

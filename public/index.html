@@ -142,25 +142,38 @@ $('#f').onsubmit = async (ev) => {
   }
 };
 
+function perfTexto(r) {
+  if (r.metodo === 'keywords') return 'clasificado por coincidencia local · sin invocar el modelo';
+  if (r.rendimiento.mock) return 'modo mock — sin inferencia';
+  const partes = [];
+  if (r.rendimiento.ms_total != null) partes.push(`${r.rendimiento.ms_total} ms`);
+  if (r.rendimiento.ttft_ms != null) partes.push(`primer token ${r.rendimiento.ttft_ms} ms`);
+  if (r.rendimiento.tokens_por_seg != null) partes.push(`${r.rendimiento.tokens_por_seg} tok/s`);
+  return partes.join(' · ');
+}
+
 function pintar(r) {
   if (r.error) { $('#salida').innerHTML = `<div class="negado"><p>No se pudo calcular.</p><span>${r.error}</span></div>`; return; }
 
   if (!r.disponible) {
-    $('#salida').innerHTML = `<div class="negado">
-      <p>Zarpe no responde esto.</p>
-      <span>${r.motivo} Clasificó como <b>${r.categoria.nombre}</b>.</span></div>`;
+    $('#salida').innerHTML = r.motivo === 'confianza insuficiente'
+      ? `<div class="negado">
+          <p>No logré clasificar esto con certeza suficiente.</p>
+          <span>Agrega más detalle sobre el producto.</span></div>`
+      : `<div class="negado">
+          <p>Zarpe no responde esto.</p>
+          <span>${r.motivo} Clasificó como <b>${r.categoria.nombre}</b>.</span></div>`;
     return;
   }
 
   const c = r.calculo, o = r.contrafactual, esReex = c.regimen === 'reexportacion';
   const fila = (k, v) => `<tr><td>${k}</td><td>${money(v)}</td></tr>`;
-  const perf = r.rendimiento.mock ? 'modo mock — sin inferencia'
-    : `${r.rendimiento.ms_total} ms · primer token ${r.rendimiento.ttft_ms} ms · ${r.rendimiento.tokens_por_seg} tok/s`;
+  const perf = perfTexto(r);
 
   $('#salida').innerHTML = `<div class="recibo">
     <div class="sello ${esReex ? 'r' : 'n'}">${esReex ? 'Reexportación' : 'Nacionalización'}</div>
     <p class="prod">${r.categoria.nombre}</p>
-    <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}%</p>
+    <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}% · método ${r.metodo} · confianza ${Math.round(r.confianza * 100)}%</p>
     <table>
       ${fila(`Valor CIF${r.tipoValor === 'FOB' ? ' (estimado desde FOB)' : ''}`, c.valorCIF)}
       ${fila('DAI', c.dai)}

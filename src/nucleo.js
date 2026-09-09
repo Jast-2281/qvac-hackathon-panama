@@ -10,8 +10,11 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { loadModel, LLAMA_3_2_1B_INST_Q4_0, completion, unloadModel } from '@qvac/sdk';
+import { loadModel, LLAMA_3_2_1B_INST_Q4_0, QWEN3_600M_INST_Q4, completion, unloadModel } from '@qvac/sdk';
 import { calcularImportacion, estimarCIF, CategoriaNoVerificada } from './calculo.js';
+
+const MODELOS = { LLAMA_3_2_1B_INST_Q4_0, QWEN3_600M_INST_Q4 };
+const modeloSrc = MODELOS[process.env.ZARPE_MODELO] ?? LLAMA_3_2_1B_INST_Q4_0;
 
 let modelId = null;
 let tabla = null;
@@ -21,7 +24,7 @@ export async function iniciar({ onProgress, mock = false } = {}) {
   if (mock) return { modelId: 'mock', msCarga: 0, verificadas: verificadas().length };
 
   const t0 = Date.now();
-  modelId = await loadModel({ modelSrc: LLAMA_3_2_1B_INST_Q4_0, onProgress });
+  modelId = await loadModel({ modelSrc: modeloSrc, onProgress });
   return { modelId, msCarga: Date.now() - t0, verificadas: verificadas().length };
 }
 
@@ -41,7 +44,7 @@ function schema() {
         type: 'object',
         properties: {
           producto_normalizado: { type: 'string', description: 'El producto descrito, normalizado en una frase corta.' },
-          categoria_id: { type: 'string', enum: tabla.categorias.map((c) => c.id), description: 'El id de la categoria asignada, de la lista enumerada.' },
+          categoria_id: { type: 'string', enum: tabla.categorias.map((c) => c.id), description: 'El id de la categoria asignada, de la lista enumerada. Si el producto no corresponde claramente a ninguna categoria de la lista, DEBE ser "otros".' },
           confianza: { type: 'number', description: 'numero entre 0 y 1' },
         },
         required: ['producto_normalizado', 'categoria_id', 'confianza'],
@@ -59,7 +62,8 @@ function sistema() {
     'You are a customs tariff classifier for Panama and the Colon Free Zone.',
     'Assign the described product to ONE of these categories:',
     lista,
-    'NEVER estimate rates, taxes, or costs. If the description does not clearly match, respond with "otros" and low confidence.',
+    'NEVER estimate rates, taxes, or costs.',
+    'If the product does NOT clearly and confidently match one of the categories listed above, you MUST respond with categoria_id "otros" and a low confianza value. Do not force it into the closest-sounding category just to give a specific answer.',
   ].join('\n');
 }
 

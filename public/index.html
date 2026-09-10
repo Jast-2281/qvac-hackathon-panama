@@ -33,7 +33,7 @@
   input[type=number]{font-family:var(--mono)}
   .fila{display:grid;grid-template-columns:1fr 92px;gap:8px}
   .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--linea);background:#fff}
-  .seg button{padding:11px 6px;border:0;background:#fff;font:13.5px var(--sans);
+  .seg button{min-height:44px;padding:12px 6px;border:0;background:#fff;font:13.5px var(--sans);
        color:var(--tenue);cursor:pointer}
   .seg button+button{border-left:1px solid var(--linea)}
   .seg button[aria-pressed=true]{background:var(--azul);color:var(--azul-2)}
@@ -83,10 +83,10 @@
   .perf{margin:12px 0 0;font:11.5px/1.5 var(--mono);color:var(--tenue)}
   .aviso{margin:12px 0 0;font-size:12px;color:var(--tenue);line-height:1.45}
   .negado{padding:18px 16px}
-  .negado p{margin:0 0 8px;font:400 18px/1.3 var(--serif)}
+  .negado h2{margin:0 0 8px;font:400 18px/1.3 var(--serif)}
   .negado span{font-size:13.5px;color:var(--tenue)}
   .confirmar-botones{display:flex;gap:8px;margin-top:14px}
-  .confirmar-botones button{flex:1;padding:11px;border:1px solid var(--tinta);
+  .confirmar-botones button{flex:1;min-height:44px;padding:12px;border:1px solid var(--tinta);
        font:13.5px var(--sans);cursor:pointer;background:#fff;color:var(--tinta)}
   .confirmar-botones button:disabled{opacity:.45;cursor:default}
   .confirmar-botones button.si{background:var(--azul);border-color:var(--azul);color:var(--azul-2)}
@@ -95,8 +95,8 @@
        padding:10px 16px;background:var(--nac);color:#fff;font:13px/1.3 var(--sans)}
   .banner-obsoleto[hidden]{display:none}
   .banner-obsoleto.visible{display:flex}
-  .banner-obsoleto button{flex:none;background:#fff;color:var(--nac);border:0;
-       padding:6px 10px;font:600 12px var(--sans);cursor:pointer}
+  .banner-obsoleto button{flex:none;min-height:36px;background:#fff;color:var(--nac);border:0;
+       padding:8px 12px;font:600 12px var(--sans);cursor:pointer}
   #salida.obsoleto{opacity:.35;filter:grayscale(.5);pointer-events:none;transition:opacity .15s}
 </style>
 
@@ -115,7 +115,7 @@
     <label for="v">Valor declarado</label>
     <div class="fila">
       <input id="v" type="number" min="0" step="1" value="5000">
-      <div class="seg" role="group">
+      <div class="seg" role="group" aria-label="Tipo de valor declarado">
         <button type="button" data-tv="CIF" aria-pressed="true">CIF</button>
         <button type="button" data-tv="FOB" aria-pressed="false">FOB</button>
       </div>
@@ -124,8 +124,8 @@
     <label for="g">Gastos de agente y puerto</label>
     <input id="g" type="number" min="0" step="1" value="400">
 
-    <label>A dónde va la mercancía</label>
-    <div class="seg" role="group">
+    <label id="rg-label">A dónde va la mercancía</label>
+    <div class="seg" role="group" aria-labelledby="rg-label">
       <button type="button" data-rg="reexportacion" aria-pressed="true">Sale del país</button>
       <button type="button" data-rg="nacionalizacion" aria-pressed="false">Se queda en Panamá</button>
     </div>
@@ -137,7 +137,7 @@
     <span>Los datos cambiaron desde el último cálculo.</span>
     <button type="button" id="recalcular-ahora">Recalcular</button>
   </div>
-  <section id="salida"><div class="vacio">Describe la carga y calcula. Nada de lo que escribas sale de esta máquina.</div></section>
+  <section id="salida" role="status" aria-live="polite"><div class="vacio">Describe la carga y calcula. Nada de lo que escribas sale de esta máquina.</div></section>
 </main>
 
 <script>
@@ -157,6 +157,14 @@ document.querySelectorAll('[data-rg]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-rg]').forEach(o => o.setAttribute('aria-pressed', o === b));
   revisarObsolescencia();
 });
+
+// Lleva la vista hasta el resultado cuando llega contenido nuevo (pensando,
+// pregunta de confirmacion, recibo o rechazo), para que en pantallas cortas
+// no haya que buscarlo con la vista ya desplazada mas abajo del formulario.
+function desplazarASalida() {
+  const sinRestriccionDeMovimiento = window.matchMedia('(prefers-reduced-motion: no-preference)').matches;
+  $('#salida').scrollIntoView({ block: 'start', behavior: sinRestriccionDeMovimiento ? 'smooth' : 'auto' });
+}
 
 // Un resultado mostrado (recibo o rechazo final) queda "vigente" mientras el
 // formulario no cambie. Si cambia cualquier campo despues, el resultado en
@@ -228,6 +236,7 @@ function mostrarCargando() {
     <p class="cargando-texto">Pensando en este equipo…</p>
     <div class="cargando-lineas"><div class="linea"></div><div class="linea"></div><div class="linea corta"></div></div>
   </div>`;
+  desplazarASalida();
 }
 
 // El atajo por keywords resuelve en milisegundos; el modelo puede tardar
@@ -261,7 +270,7 @@ $('#f').onsubmit = async (ev) => {
   } catch (e) {
     snapshotVigente = null;
     $('#salida').classList.remove('obsoleto'); $('#banner-obsoleto').hidden = true;
-    $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
+    $('#salida').innerHTML = `<div class="negado"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
   } finally {
     $('#b').disabled = false; $('#b').textContent = 'Calcular'; bloquearFormulario(false);
   }
@@ -294,13 +303,14 @@ function pintarConfirmacion(r) {
   const descripcionPreguntada = r._descripcionEnviada;
 
   $('#salida').innerHTML = `<div class="negado">
-    <p>¿Es correcto?</p>
+    <h2>¿Es correcto?</h2>
     <span>${r.requiereConfirmacion.pregunta}</span>
     <div class="confirmar-botones">
       <button type="button" class="si" id="confirmar-si">Sí, calcular</button>
       <button type="button" id="confirmar-no">No, voy a aclarar</button>
     </div>
   </div>`;
+  desplazarASalida();
 
   const invalidarSiCambia = () => {
     if ($('#d').value !== descripcionPreguntada) {
@@ -326,7 +336,7 @@ function pintarConfirmacion(r) {
       )));
     } catch (e) {
       snapshotVigente = null;
-      $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
+      $('#salida').innerHTML = `<div class="negado"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
     } finally {
       $('#b').disabled = false; bloquearFormulario(false);
     }
@@ -344,7 +354,8 @@ function pintar(r) {
 
   if (r.error) {
     snapshotVigente = null;
-    $('#salida').innerHTML = `<div class="negado"><p>No se pudo calcular.</p><span>${r.error}</span></div>`;
+    $('#salida').innerHTML = `<div class="negado"><h2>No se pudo calcular.</h2><span>${r.error}</span></div>`;
+    desplazarASalida();
     return;
   }
 
@@ -353,12 +364,13 @@ function pintar(r) {
   if (!r.disponible) {
     $('#salida').innerHTML = r.motivo === 'confianza insuficiente'
       ? `<div class="negado">
-          <p>No logré clasificar esto con certeza suficiente.</p>
+          <h2>No logré clasificar esto con certeza suficiente.</h2>
           <span>Agrega más detalle sobre el producto.</span></div>`
       : `<div class="negado">
-          <p>Zarpe no responde esto.</p>
+          <h2>Zarpe no responde esto.</h2>
           <span>${r.motivo} Clasificó como <b>${r.categoria.nombre}</b>.</span></div>`;
     marcarResultadoVigente();
+    desplazarASalida();
     return;
   }
 
@@ -368,7 +380,7 @@ function pintar(r) {
 
   $('#salida').innerHTML = `<div class="recibo">
     <div class="sello ${esReex ? 'r' : 'n'}">${esReex ? 'Reexportación' : 'Nacionalización'}</div>
-    <p class="prod">${r.categoria.nombre}</p>
+    <h2 class="prod">${r.categoria.nombre}</h2>
     <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}% · método ${r.metodo} · ${confianzaTexto(r)}</p>
     <div class="total-hero">
       <span class="total-label">Costo total</span>
@@ -389,5 +401,6 @@ function pintar(r) {
     <p class="aviso">${r.aviso}</p>
   </div>`;
   marcarResultadoVigente();
+  desplazarASalida();
 }
 </script>

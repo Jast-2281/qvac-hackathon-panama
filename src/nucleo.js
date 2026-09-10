@@ -143,21 +143,43 @@ function sistema() {
  * @param {'nacionalizacion'|'reexportacion'} p.regimen
  * @param {number} [p.gastosFijos]
  * @param {string} [p.categoriaConfirmada]  Id de categoria que el usuario ya
- *   confirmo en una vuelta anterior (ver `cat.confirmar`). Si viene, se usa
- *   directamente y no se vuelve a clasificar por keywords ni por modelo.
+ *   confirmo en una vuelta anterior (ver `cat.confirmar`). Solo se acepta si
+ *   la descripcion ACTUAL sigue coincidiendo con esa categoria: una
+ *   confirmacion vieja no se puede reutilizar sobre una descripcion editada
+ *   despues de pedirla (ej. confirmar "camisetas" y luego cambiar el texto
+ *   a "drones" antes de enviar).
  */
 export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFijos = 0, mock = false, categoriaConfirmada = null }) {
   const m = tabla._meta;
   const valorCIF = tipoValor === 'FOB' ? estimarCIF(valor, m.estimacion_cif_desde_fob) : valor;
+  const t = normalizar(descripcion);
+
+  // Si la descripcion junta mas de un producto no vale la pena invocar el
+  // modelo ni respetar ninguna confirmacion previa: ya sabemos que se va a
+  // rechazar, asi que se corta aqui en vez de esperar una inferencia inutil.
+  if (pareceMultiproducto(t)) {
+    const otros = tabla.categorias.find((c) => c.id === 'otros');
+    return {
+      clasificacion: { producto_normalizado: descripcion, categoria_id: otros.id, confianza: null },
+      categoria: { id: otros.id, nombre: otros.nombre, fraccion: otros.fraccion, verificado: otros.verificado },
+      rendimiento: { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false },
+      valorCIF: Math.round(valorCIF * 100) / 100,
+      tipoValor,
+      supuestoFOB: tipoValor === 'FOB' ? m.estimacion_cif_desde_fob : null,
+      metodo: 'bloqueado',
+      confianza: null,
+      disponible: false,
+      motivo: 'Tu descripcion parece tener mas de un producto (una coma, "+", ";", salto de linea o "y"). Zarpe solo admite un producto por consulta: si es un solo producto (ej. una talla o un destinatario), quita el separador; si son varios, calcula cada uno por separado.',
+    };
+  }
 
   let clasificacion, rendimiento, metodo;
 
-  const t = normalizar(descripcion);
-  const coincidencias = pareceMultiproducto(t) ? [] : tabla.categorias.filter((c) => categoriaCoincide(t, c));
+  const coincidencias = tabla.categorias.filter((c) => categoriaCoincide(t, c));
 
-  if (categoriaConfirmada) {
+  if (categoriaConfirmada && tabla.categorias.some((c) => c.id === categoriaConfirmada && categoriaCoincide(t, c))) {
     const catConfirmada = tabla.categorias.find((c) => c.id === categoriaConfirmada);
-    clasificacion = { producto_normalizado: descripcion, categoria_id: catConfirmada ? catConfirmada.id : 'otros', confianza: null };
+    clasificacion = { producto_normalizado: descripcion, categoria_id: catConfirmada.id, confianza: null };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
     metodo = 'confirmado';
   } else if (coincidencias.length === 1) {
@@ -210,12 +232,13 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
   };
 
   // Control posterior a la clasificacion, sin importar si la categoria vino del
-  // atajo por keywords o del modelo: detectar una contradiccion de material o
-  // una carga mixta no sirve de nada si no bloquea el calculo tambien aqui.
-  if (categoriaContradicha(t, cat) || pareceMultiproducto(t)) {
+  // atajo por keywords, del modelo o de una confirmacion: detectar una
+  // contradiccion de material no sirve de nada si no bloquea el calculo aqui
+  // tambien (la carga mixta ya se descarto antes, mas arriba).
+  if (categoriaContradicha(t, cat)) {
     return {
       ...base, disponible: false,
-      motivo: 'La descripcion contradice la categoria o sugiere mas de un producto. Separa o aclara la descripcion.',
+      motivo: 'La descripcion contradice la categoria elegida. Aclara la descripcion.',
     };
   }
 

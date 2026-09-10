@@ -114,6 +114,7 @@
 <script>
 const $ = (s) => document.querySelector(s);
 let tipoValor = 'CIF', regimen = 'reexportacion';
+let limpiarConfirmacion = null;
 const money = (n) => n.toLocaleString('es-PA',{style:'currency',currency:'USD'});
 
 document.querySelectorAll('[data-tv]').forEach(b => b.onclick = () => {
@@ -147,6 +148,7 @@ $('#f').onsubmit = async (ev) => {
   ev.preventDefault();
   const d = $('#d').value.trim();
   if (!d) return;
+  limpiarConfirmacion?.(); limpiarConfirmacion = null;
   $('#b').disabled = true; $('#b').textContent = 'Calculando…';
   try {
     pintar(await enviarEstimacion());
@@ -175,6 +177,13 @@ function confianzaTexto(r) {
 }
 
 function pintarConfirmacion(r) {
+  limpiarConfirmacion?.();
+
+  // La pregunta vale solo para el texto que la genero: si se edita la
+  // descripcion despues de pedir confirmar, esta tarjeta queda invalida y no
+  // debe poder usarse para calcular la descripcion nueva.
+  const descripcionPreguntada = $('#d').value;
+
   $('#salida').innerHTML = `<div class="negado">
     <p>¿Es correcto?</p>
     <span>${r.requiereConfirmacion.pregunta}</span>
@@ -184,15 +193,28 @@ function pintarConfirmacion(r) {
     </div>
   </div>`;
 
+  const invalidarSiCambia = () => {
+    if ($('#d').value !== descripcionPreguntada) {
+      $('#salida').innerHTML = `<div class="vacio">La descripción cambió — vuelve a calcular.</div>`;
+      limpiarConfirmacion?.(); limpiarConfirmacion = null;
+    }
+  };
+  $('#d').addEventListener('input', invalidarSiCambia);
+  limpiarConfirmacion = () => $('#d').removeEventListener('input', invalidarSiCambia);
+
   $('#confirmar-si').onclick = async () => {
-    $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true;
+    $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true; $('#b').disabled = true;
     try {
       pintar(await enviarEstimacion({ categoriaConfirmada: r.requiereConfirmacion.categoriaId }));
     } catch (e) {
       $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
+    } finally {
+      limpiarConfirmacion?.(); limpiarConfirmacion = null;
+      $('#b').disabled = false;
     }
   };
   $('#confirmar-no').onclick = () => {
+    limpiarConfirmacion?.(); limpiarConfirmacion = null;
     $('#salida').innerHTML = `<div class="vacio">Aclara el producto y el material en la descripción, y vuelve a calcular.</div>`;
     $('#d').focus();
   };

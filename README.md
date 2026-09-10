@@ -104,16 +104,19 @@ LLAMA se comportó de forma más conservadora.
   negaciones ("no son camisetas", "camisetas sin algodón") y contradicciones de
   material/forma para camisetas (poliéster, seda, rollos de tela, entre otras).
   Una coma, un "+", un ";", un salto de línea o un "y" suelto en la descripción
-  ("camisetas y zapatos") se tratan como posible carga mixta: no se usa el atajo
-  y, si igual el resultado final contradice la categoría o sugiere más de un
-  producto, el cálculo se bloquea aunque la clasificación venga del modelo.
-  Una palabra usada en un contexto no literal (p. ej. "fundas para camisetas")
-  no tiene una regla de keywords segura — rompería descripciones válidas como
-  "camisetas para hombre". En vez de eso, las categorías donde esto es un
-  riesgo real (por ahora, camisetas) exigen una confirmación explícita del
-  usuario antes de calcular: Zarpe propone la categoría y pregunta si el
-  producto y el material son los correctos, y solo calcula tras un sí. Esto
-  cierra el caso "fundas para camisetas" sin agregar más reglas de keywords.
+  ("camisetas y zapatos") se tratan como posible carga mixta: la consulta se
+  rechaza antes de invocar el modelo, y ninguna confirmación previa puede
+  saltarse ese rechazo.
+- Una palabra usada en un contexto no literal (p. ej. "fundas para camisetas",
+  "vasos para whisky", "esencia de ron") no tiene una regla de keywords segura
+  — rompería descripciones válidas como "camisetas para hombre". Por eso las
+  tres categorías verificadas exigen una confirmación explícita del usuario
+  antes de calcular: Zarpe propone la categoría y pregunta si el producto (y,
+  para camisetas, el material) son los correctos; solo calcula tras un sí.
+  La confirmación queda atada al texto que la generó — se valida contra la
+  descripción vigente en el momento de calcular, así que no se puede editar
+  la descripción después de pedir confirmar y reusar esa confirmación sobre
+  el texto nuevo.
 
 ## Evidencia de inferencia local
 

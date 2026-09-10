@@ -107,11 +107,13 @@ LLAMA se comportó de forma más conservadora.
   ("camisetas y zapatos") se tratan como posible carga mixta: no se usa el atajo
   y, si igual el resultado final contradice la categoría o sugiere más de un
   producto, el cálculo se bloquea aunque la clasificación venga del modelo.
-  Sigue sin detectar una palabra usada en un contexto no literal (p. ej. "fundas
-  para camisetas"); una regla para ese caso rompería descripciones válidas como
-  "camisetas para hombre". Ese caso debería resolverse limitando cada consulta
-  a un solo producto y confirmando sus atributos, no agregando más reglas de
-  keywords.
+  Una palabra usada en un contexto no literal (p. ej. "fundas para camisetas")
+  no tiene una regla de keywords segura — rompería descripciones válidas como
+  "camisetas para hombre". En vez de eso, las categorías donde esto es un
+  riesgo real (por ahora, camisetas) exigen una confirmación explícita del
+  usuario antes de calcular: Zarpe propone la categoría y pregunta si el
+  producto y el material son los correctos, y solo calcula tras un sí. Esto
+  cierra el caso "fundas para camisetas" sin agregar más reglas de keywords.
 
 ## Evidencia de inferencia local
 

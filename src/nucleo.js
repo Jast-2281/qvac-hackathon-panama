@@ -142,8 +142,11 @@ function sistema() {
  * @param {'CIF'|'FOB'} p.tipoValor
  * @param {'nacionalizacion'|'reexportacion'} p.regimen
  * @param {number} [p.gastosFijos]
+ * @param {string} [p.categoriaConfirmada]  Id de categoria que el usuario ya
+ *   confirmo en una vuelta anterior (ver `cat.confirmar`). Si viene, se usa
+ *   directamente y no se vuelve a clasificar por keywords ni por modelo.
  */
-export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFijos = 0, mock = false }) {
+export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFijos = 0, mock = false, categoriaConfirmada = null }) {
   const m = tabla._meta;
   const valorCIF = tipoValor === 'FOB' ? estimarCIF(valor, m.estimacion_cif_desde_fob) : valor;
 
@@ -152,7 +155,12 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
   const t = normalizar(descripcion);
   const coincidencias = pareceMultiproducto(t) ? [] : tabla.categorias.filter((c) => categoriaCoincide(t, c));
 
-  if (coincidencias.length === 1) {
+  if (categoriaConfirmada) {
+    const catConfirmada = tabla.categorias.find((c) => c.id === categoriaConfirmada);
+    clasificacion = { producto_normalizado: descripcion, categoria_id: catConfirmada ? catConfirmada.id : 'otros', confianza: null };
+    rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
+    metodo = 'confirmado';
+  } else if (coincidencias.length === 1) {
     const cat0 = coincidencias[0];
     clasificacion = { producto_normalizado: descripcion, categoria_id: cat0.id, confianza: null };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
@@ -217,6 +225,19 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
 
   if (!cat.verificado) {
     return { ...base, disponible: false, motivo: 'Zarpe no tiene tributos verificados para esta categoria y no responde con datos sin verificar.' };
+  }
+
+  // Algunas categorias no se identifican solo con palabras: requieren que el
+  // usuario confirme un atributo que ni el atajo por keywords ni el modelo
+  // pueden verificar con certeza (ej. que "camisetas" sea realmente la
+  // prenda, no un accesorio como "fundas para camisetas"). Se pregunta una
+  // vez; si ya viene confirmado (metodo "confirmado") se calcula de una vez.
+  if (cat.confirmar && metodo !== 'confirmado') {
+    return {
+      ...base, disponible: false,
+      motivo: 'requiere confirmacion',
+      requiereConfirmacion: { categoriaId: cat.id, pregunta: cat.confirmar },
+    };
   }
 
   const args = {

@@ -97,6 +97,7 @@
     {
       "id": "camisetas",
       "nombre": "Camisetas de punto, de algodon",
+      "confirmar": "¿Lo que importas es una prenda de vestir (camiseta, playera o polo) hecha de algodon, y no un accesorio, otra prenda u otro material?",
       "keywords": [
         "camiseta",
         "camisetas",

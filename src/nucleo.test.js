@@ -4,8 +4,8 @@ import * as nucleo from './nucleo.js';
 
 before(async () => { await nucleo.iniciar({ mock: true }); });
 
-function clasificar(descripcion) {
-  return nucleo.estimar({ descripcion, valor: 1000, tipoValor: 'CIF', regimen: 'reexportacion', mock: true });
+function clasificar(descripcion, categoriaConfirmada = null) {
+  return nucleo.estimar({ descripcion, valor: 1000, tipoValor: 'CIF', regimen: 'reexportacion', mock: true, categoriaConfirmada });
 }
 
 test('drones no coincide con licores por subcadena de "ron"', async () => {
@@ -37,10 +37,17 @@ test('cajetillas de cigarrillos coincide por keywords con cigarrillos y calcula'
   assert.equal(r.disponible, true);
 });
 
-test('camisetas de algodon coincide por keywords con camisetas y calcula', async () => {
+test('camisetas de algodon coincide por keywords pero pide confirmar antes de calcular', async () => {
   const r = await clasificar('500 camisetas de algodon');
   assert.equal(r.metodo, 'keywords');
   assert.equal(r.clasificacion.categoria_id, 'camisetas');
+  assert.equal(r.disponible, false);
+  assert.equal(r.requiereConfirmacion.categoriaId, 'camisetas');
+});
+
+test('camisetas de algodon calcula una vez confirmada la categoria', async () => {
+  const r = await clasificar('500 camisetas de algodon', 'camisetas');
+  assert.equal(r.metodo, 'confirmado');
   assert.equal(r.disponible, true);
 });
 
@@ -110,12 +117,13 @@ test('camisetas y zapatos en lineas separadas no calcula (salto de linea como se
   assert.equal(r.disponible, false);
 });
 
-// Limite conocido y aceptado: una palabra usada en sentido no literal
-// ("funda PARA camisetas") no tiene una guarda generica segura sin arriesgar
-// falsos positivos sobre descripciones validas ("camisetas para hombre").
-// Este test documenta el comportamiento actual, no lo aprueba.
-test('fundas para camisetas todavia se clasifica como camisetas (limite conocido, no resuelto)', async () => {
+// "funda PARA camisetas" ya no tiene una guarda generica segura por keywords
+// (una regla para ese caso rompería "camisetas para hombre"). Lo que sí
+// cierra el hueco es exigir confirmacion humana antes de calcular: aqui se
+// pide confirmar el producto y el material en vez de asumirlo.
+test('fundas para camisetas pide confirmar en vez de calcular directo', async () => {
   const r = await clasificar('fundas para camisetas');
   assert.equal(r.metodo, 'keywords');
-  assert.equal(r.disponible, true);
+  assert.equal(r.disponible, false);
+  assert.equal(r.requiereConfirmacion.categoriaId, 'camisetas');
 });

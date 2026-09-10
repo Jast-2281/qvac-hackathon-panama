@@ -68,6 +68,11 @@
   .negado{padding:18px 16px}
   .negado p{margin:0 0 8px;font:400 18px/1.3 var(--serif)}
   .negado span{font-size:13.5px;color:var(--tenue)}
+  .confirmar-botones{display:flex;gap:8px;margin-top:14px}
+  .confirmar-botones button{flex:1;padding:11px;border:1px solid var(--tinta);
+       font:13.5px var(--sans);cursor:pointer;background:#fff;color:var(--tinta)}
+  .confirmar-botones button:disabled{opacity:.45;cursor:default}
+  .confirmar-botones button.si{background:var(--tinta);color:var(--papel)}
 </style>
 
 <main>
@@ -128,17 +133,23 @@ fetch('/api/estado').then(r => r.json()).then(e => {
   $('#fr').textContent = 'No se pudo conectar con el servidor local.';
 });
 
+async function enviarEstimacion(extra = {}) {
+  return fetch('/api/estimar', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({
+      descripcion: $('#d').value.trim(), valor: +$('#v').value, tipoValor, regimen,
+      gastosFijos: +$('#g').value, ...extra,
+    })
+  }).then(x => x.json());
+}
+
 $('#f').onsubmit = async (ev) => {
   ev.preventDefault();
   const d = $('#d').value.trim();
   if (!d) return;
   $('#b').disabled = true; $('#b').textContent = 'Calculando…';
   try {
-    const r = await fetch('/api/estimar', {
-      method: 'POST', headers: {'content-type':'application/json'},
-      body: JSON.stringify({ descripcion: d, valor: +$('#v').value, tipoValor, regimen, gastosFijos: +$('#g').value })
-    }).then(x => x.json());
-    pintar(r);
+    pintar(await enviarEstimacion());
   } catch (e) {
     $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
   } finally {
@@ -148,6 +159,7 @@ $('#f').onsubmit = async (ev) => {
 
 function perfTexto(r) {
   if (r.metodo === 'keywords') return 'clasificado por coincidencia local · sin invocar el modelo';
+  if (r.metodo === 'confirmado') return 'categoria confirmada por ti · sin invocar el modelo';
   if (r.rendimiento.mock) return 'modo mock — sin inferencia';
   const partes = [];
   if (r.rendimiento.ms_total != null) partes.push(`${r.rendimiento.ms_total} ms`);
@@ -157,11 +169,39 @@ function perfTexto(r) {
 }
 
 function confianzaTexto(r) {
-  return r.metodo === 'keywords' ? 'coincidencia directa' : `confianza ${Math.round(r.confianza * 100)}%`;
+  if (r.metodo === 'keywords') return 'coincidencia directa';
+  if (r.metodo === 'confirmado') return 'confirmado por ti';
+  return `confianza ${Math.round(r.confianza * 100)}%`;
+}
+
+function pintarConfirmacion(r) {
+  $('#salida').innerHTML = `<div class="negado">
+    <p>¿Es correcto?</p>
+    <span>${r.requiereConfirmacion.pregunta}</span>
+    <div class="confirmar-botones">
+      <button type="button" class="si" id="confirmar-si">Sí, calcular</button>
+      <button type="button" id="confirmar-no">No, voy a aclarar</button>
+    </div>
+  </div>`;
+
+  $('#confirmar-si').onclick = async () => {
+    $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true;
+    try {
+      pintar(await enviarEstimacion({ categoriaConfirmada: r.requiereConfirmacion.categoriaId }));
+    } catch (e) {
+      $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
+    }
+  };
+  $('#confirmar-no').onclick = () => {
+    $('#salida').innerHTML = `<div class="vacio">Aclara el producto y el material en la descripción, y vuelve a calcular.</div>`;
+    $('#d').focus();
+  };
 }
 
 function pintar(r) {
   if (r.error) { $('#salida').innerHTML = `<div class="negado"><p>No se pudo calcular.</p><span>${r.error}</span></div>`; return; }
+
+  if (r.requiereConfirmacion) { pintarConfirmacion(r); return; }
 
   if (!r.disponible) {
     $('#salida').innerHTML = r.motivo === 'confianza insuficiente'

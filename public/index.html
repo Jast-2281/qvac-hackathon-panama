@@ -70,8 +70,8 @@
   .total-hero .total-label{display:block;font:600 12px var(--sans);letter-spacing:.03em;
        text-transform:uppercase;opacity:.8}
   .total-hero .total-cifra{display:block;margin-top:4px;font-family:var(--mono);font-weight:700;
-       line-height:1.1;font-size:30px;font-variant-numeric:tabular-nums;
-       letter-spacing:-.01em;word-break:break-word}
+       line-height:1.1;font-size:clamp(17px,7.5vw,30px);font-variant-numeric:tabular-nums;
+       letter-spacing:-.01em;white-space:nowrap;overflow-x:hidden}
   .nota-fob{margin:0 0 14px;font-size:12.5px;color:var(--tenue);line-height:1.4}
   .nota-fob b{font-family:var(--mono);font-weight:600;color:var(--tinta)}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -223,6 +223,21 @@ async function enviarEstimacion(extra = {}, descripcionForzada = null) {
   return { ...r, _descripcionEnviada: descripcion, _valorEnviado: valor };
 }
 
+// Un valor declarado vacio o en cero (+'' === 0, +'0' === 0) pasaba la
+// validacion del servidor (valor >= 0) y producia un recibo con "Costo
+// total $0" mostrado con total confianza. Se valida aqui, del lado del
+// cliente, antes de intentar calcular.
+function validarFormulario() {
+  if (!$('#d').value.trim()) {
+    return { mensaje: 'Escribe qué estás trayendo antes de calcular.', campo: '#d' };
+  }
+  const v = +$('#v').value;
+  if (!Number.isFinite(v) || v <= 0) {
+    return { mensaje: 'El valor declarado debe ser mayor a cero.', campo: '#v' };
+  }
+  return null;
+}
+
 // Bloquea todo el formulario mientras hay una solicitud pendiente: el
 // resultado siempre corresponde a los valores que se enviaron, asi que
 // dejar editar valor/gastos/regimen mientras se espera podria mostrar en
@@ -258,12 +273,12 @@ async function conCargaDiferida(promesa) {
 
 $('#f').onsubmit = async (ev) => {
   ev.preventDefault();
-  const d = $('#d').value.trim();
-  if (!d) {
+  const errorFormulario = validarFormulario();
+  if (errorFormulario) {
     snapshotVigente = null;
     $('#salida').classList.remove('obsoleto'); $('#banner-obsoleto').hidden = true;
-    $('#salida').innerHTML = `<div class="vacio">Escribe qué estás trayendo antes de calcular.</div>`;
-    $('#d').focus();
+    $('#salida').innerHTML = `<div class="vacio">${errorFormulario.mensaje}</div>`;
+    $(errorFormulario.campo).focus();
     return;
   }
   limpiarConfirmacion?.(); limpiarConfirmacion = null;
@@ -280,6 +295,18 @@ $('#f').onsubmit = async (ev) => {
 };
 
 function perfTexto(r) {
+  // Si la categoria confirmada vino originalmente del modelo, seguimos
+  // mostrando su rendimiento real aunque el camino final sea "confirmado"
+  // (que en si mismo no vuelve a invocar el modelo). Sin esto, la unica
+  // evidencia de inferencia local desaparecia en cuanto el usuario
+  // confirmaba — justo el camino que mas veces se usa.
+  if (r._rendimientoModelo) {
+    const partes = [];
+    if (r._rendimientoModelo.ms_total != null) partes.push(`${r._rendimientoModelo.ms_total} ms`);
+    if (r._rendimientoModelo.ttft_ms != null) partes.push(`primer token ${r._rendimientoModelo.ttft_ms} ms`);
+    if (r._rendimientoModelo.tokens_por_seg != null) partes.push(`${r._rendimientoModelo.tokens_por_seg} tok/s`);
+    return partes.length ? `clasificado en este equipo · ${partes.join(' · ')}` : 'clasificado en este equipo';
+  }
   if (r.metodo === 'keywords') return 'clasificado por coincidencia local · sin invocar el modelo';
   if (r.metodo === 'confirmado') return 'categoria confirmada por ti · sin invocar el modelo';
   if (r.rendimiento.mock) return 'modo mock — sin inferencia';
@@ -291,6 +318,7 @@ function perfTexto(r) {
 }
 
 function confianzaTexto(r) {
+  if (r._rendimientoModeloConfianza != null) return `confianza del modelo ${Math.round(r._rendimientoModeloConfianza * 100)}% · confirmado por ti`;
   if (r.metodo === 'keywords') return 'coincidencia directa';
   if (r.metodo === 'confirmado') return 'confirmado por ti';
   return `confianza ${Math.round(r.confianza * 100)}%`;
@@ -304,6 +332,12 @@ function pintarConfirmacion(r) {
   // respuesta (no lo que haya en el campo ahora mismo: pudo cambiar mientras
   // esperabamos la respuesta del servidor).
   const descripcionPreguntada = r._descripcionEnviada;
+
+  // Si esta propuesta vino del modelo (no del atajo por keywords), guardamos
+  // su rendimiento y confianza reales para poder seguir mostrandolos en el
+  // resultado final, aunque ese resultado llegue por el camino "confirmado".
+  const rendimientoOriginal = r.metodo === 'modelo' ? r.rendimiento : null;
+  const confianzaOriginal = r.metodo === 'modelo' ? r.confianza : null;
 
   $('#salida').innerHTML = `<div class="negado">
     <h2>¿Es correcto?</h2>
@@ -329,14 +363,24 @@ function pintarConfirmacion(r) {
   limpiarConfirmacion = limpiarEsta;
 
   $('#confirmar-si').onclick = async () => {
+    const v = +$('#v').value;
+    if (!Number.isFinite(v) || v <= 0) {
+      limpiarEsta();
+      $('#salida').innerHTML = `<div class="vacio">El valor declarado debe ser mayor a cero.</div>`;
+      $('#v').focus();
+      return;
+    }
     limpiarEsta();
     $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true;
     $('#b').disabled = true; bloquearFormulario(true);
     try {
-      pintar(await conCargaDiferida(enviarEstimacion(
+      const resultado = await conCargaDiferida(enviarEstimacion(
         { categoriaConfirmada: r.requiereConfirmacion.categoriaId, descripcionConfirmada: descripcionPreguntada },
         descripcionPreguntada,
-      )));
+      ));
+      if (rendimientoOriginal) resultado._rendimientoModelo = rendimientoOriginal;
+      if (confianzaOriginal != null) resultado._rendimientoModeloConfianza = confianzaOriginal;
+      pintar(resultado);
     } catch (e) {
       snapshotVigente = null;
       $('#salida').innerHTML = `<div class="negado rechazo"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
@@ -369,7 +413,7 @@ function pintar(r) {
     $('#salida').innerHTML = r.motivo === 'confianza insuficiente'
       ? `<div class="negado rechazo">
           <h2>No estoy seguro de la categoría.</h2>
-          <span>Zarpe hoy solo tiene tarifas verificadas para: ${listaCategorias}. Si tu producto es uno de estos, describí el producto y el material con más detalle; si no es ninguno, Zarpe todavía no lo cubre.</span></div>`
+          <span>Zarpe hoy solo tiene tarifas verificadas para: ${listaCategorias}. Si tu producto es uno de estos, describe el producto y el material con más detalle; si no es ninguno, Zarpe todavía no lo cubre.</span></div>`
       : `<div class="negado rechazo">
           <h2>Zarpe no responde esto.</h2>
           <span>${r.motivo}${r.categoria.id !== 'otros' ? ` Clasificó como <b>${r.categoria.nombre}</b>.` : ''}</span></div>`;

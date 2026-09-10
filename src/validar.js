@@ -17,22 +17,22 @@ export function validarEntrada(cuerpo) {
   }
 
   if (typeof descripcion !== 'string' || descripcion.trim() === '') {
-    return 'descripcion debe ser un texto no vacio';
+    return 'la descripción debe ser un texto no vacío';
   }
   if (descripcion.length > 500) {
-    return 'descripcion no puede superar 500 caracteres';
+    return 'la descripción no puede superar 500 caracteres';
   }
   if (tipoValor !== 'CIF' && tipoValor !== 'FOB') {
     return 'tipoValor debe ser "CIF" o "FOB"';
   }
-  if (!Number.isFinite(valor) || valor < 0) {
-    return 'valor debe ser un numero positivo';
+  if (!Number.isFinite(valor) || valor <= 0) {
+    return 'el valor debe ser un número mayor a cero';
   }
   if (!Number.isFinite(gastosFijos) || gastosFijos < 0) {
-    return 'gastosFijos debe ser un numero positivo';
+    return 'gastosFijos debe ser un número mayor o igual a cero';
   }
   if (regimen !== 'nacionalizacion' && regimen !== 'reexportacion') {
-    return 'regimen debe ser "nacionalizacion" o "reexportacion"';
+    return 'el régimen debe ser "nacionalizacion" o "reexportacion"';
   }
   return null;
 }

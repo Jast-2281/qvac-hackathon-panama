@@ -177,7 +177,7 @@ export async function estimar({
       metodo: 'bloqueado',
       confianza: null,
       disponible: false,
-      motivo: 'Tu descripcion parece tener mas de un producto (una coma, "+", ";", salto de linea o "y"). Zarpe solo admite un producto por consulta: si es un solo producto (ej. una talla o un destinatario), quita el separador; si son varios, calcula cada uno por separado.',
+      motivo: 'Tu descripción parece tener más de un producto (una coma, "+", ";", salto de línea o "y"). Zarpe solo admite un producto por consulta: si es un solo producto (ej. una talla o un destinatario), quita el separador; si son varios, calcula cada uno por separado.',
     };
   }
 
@@ -249,7 +249,7 @@ export async function estimar({
   if (categoriaContradicha(t, cat)) {
     return {
       ...base, disponible: false,
-      motivo: 'La descripcion contradice la categoria elegida. Aclara la descripcion.',
+      motivo: 'La descripción contradice la categoría elegida. Aclara la descripción.',
     };
   }
 
@@ -258,7 +258,7 @@ export async function estimar({
   }
 
   if (!cat.verificado) {
-    return { ...base, disponible: false, motivo: 'Zarpe no tiene tributos verificados para esta categoria y no responde con datos sin verificar.' };
+    return { ...base, disponible: false, motivo: 'Zarpe no tiene tributos verificados para esta categoría y no responde con datos sin verificar.' };
   }
 
   // Algunas categorias no se identifican solo con palabras: requieren que el
@@ -293,7 +293,7 @@ export async function estimar({
       tributos: { dai_pct: cat.dai_pct, itbms_pct: cat.itbms_pct, isc_pct: cat.isc_pct, iccdp_pct: cat.iccdp_pct },
       calculo: elegido,
       contrafactual: otro,
-      aviso: 'Estimacion orientativa contra el Arancel Nacional (solo tasas NMF, sin tratado preferencial). No es un dictamen oficial de clasificacion. Supuesto sin confirmar: el ISC no se incluye en la base del ITBMS.',
+      aviso: 'Estimación orientativa contra el Arancel Nacional (solo tasas NMF, sin tratado preferencial). No es un dictamen oficial de clasificación. Supuesto sin confirmar: el ISC no se incluye en la base del ITBMS.',
     };
   } catch (e) {
     if (e instanceof CategoriaNoVerificada) {

@@ -55,7 +55,7 @@ export function calcularImportacion({
     return armar({
       valorCIF, arancel: 0, baseITBMS: 0, itbms: 0, gastosFijos,
       regimen,
-      motivo: 'Reexportacion desde Zona Libre de Colon: no causa arancel ni ITBMS panameno.',
+      motivo: 'Reexportación desde la Zona Libre de Colón: no causa arancel ni ITBMS panameño.',
     });
   }
 
@@ -84,7 +84,7 @@ export function calcularImportacion({
 
 export class CategoriaNoVerificada extends Error {
   constructor() {
-    super('Categoria sin tasa verificada: Zarpe no responde con datos no verificados.');
+    super('Categoría sin tasa verificada: Zarpe no responde con datos no verificados.');
     this.name = 'CategoriaNoVerificada';
   }
 }

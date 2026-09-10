@@ -24,7 +24,7 @@
   "categorias": [
     {
       "id": "otros",
-      "nombre": "No clasificable con la informacion disponible",
+      "nombre": "No clasificable con la información disponible",
       "keywords": [],
       "fraccion": null,
       "dai_pct": null,
@@ -32,12 +32,12 @@
       "isc_pct": null,
       "iccdp_pct": null,
       "verificado": false,
-      "motivo_no_disponible": "Sin categoria verificada para esta descripcion."
+      "motivo_no_disponible": "Sin categoría verificada para esta descripción."
     },
     {
       "id": "cigarrillos",
       "nombre": "Cigarrillos que contengan tabaco",
-      "confirmar": "¿Lo que importas son cigarrillos con tabaco (el producto en si), y no un accesorio, insumo o solo una mencion del producto (ej. fundas o ceniceros)?",
+      "confirmar": "¿Lo que importas son cigarrillos con tabaco (el producto en sí), y no un accesorio, insumo o solo una mención del producto (ej. fundas o ceniceros)?",
       "keywords": [
         "cigarrillo",
         "cigarrillos",
@@ -56,7 +56,7 @@
     {
       "id": "licores",
       "nombre": "Licores",
-      "confirmar": "¿Lo que importas es la bebida alcoholica embotellada en si, y no un accesorio, ingrediente derivado o solo una mencion del producto (ej. vasos, esencias o saborizantes)?",
+      "confirmar": "¿Lo que importas es la bebida alcohólica embotellada en sí, y no un accesorio, ingrediente derivado o solo una mención del producto (ej. vasos, esencias o saborizantes)?",
       "keywords": [
         "licor",
         "licores",
@@ -80,7 +80,7 @@
     },
     {
       "id": "celulares",
-      "nombre": "Telefonos moviles (celulares) y otras redes inalambricas",
+      "nombre": "Teléfonos móviles (celulares) y otras redes inalámbricas",
       "keywords": [
         "celular",
         "celulares",
@@ -98,8 +98,8 @@
     },
     {
       "id": "camisetas",
-      "nombre": "Camisetas de punto, de algodon",
-      "confirmar": "¿Lo que importas es una prenda de vestir (camiseta, playera o polo) hecha de algodon, y no un accesorio, otra prenda u otro material?",
+      "nombre": "Camisetas de punto, de algodón",
+      "confirmar": "¿Lo que importas es una prenda de vestir (camiseta, playera o polo) hecha de algodón, y no un accesorio, otra prenda u otro material?",
       "keywords": [
         "camiseta",
         "camisetas",

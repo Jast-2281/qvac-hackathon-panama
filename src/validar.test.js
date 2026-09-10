@@ -25,8 +25,9 @@ test('rechaza tipoValor invalido', () => {
   assert.ok(validarEntrada({ ...base, tipoValor: 'EXW' }));
 });
 
-test('rechaza valor negativo o no numerico', () => {
+test('rechaza valor negativo, cero, o no numerico', () => {
   assert.ok(validarEntrada({ ...base, valor: -1 }));
+  assert.ok(validarEntrada({ ...base, valor: 0 }));
   assert.ok(validarEntrada({ ...base, valor: 'mil' }));
 });
 

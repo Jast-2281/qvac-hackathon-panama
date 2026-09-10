@@ -74,6 +74,14 @@ function categoriaCoincide(textoNormalizado, categoria) {
   return categoria.keywords.some((k) => contieneKeyword(textoNormalizado, k));
 }
 
+// Una coma o un "y" suelto sugiere que la descripcion junta mas de un
+// producto (ej. "camisetas y zapatos"). En ese caso no confiamos en el atajo
+// por keywords aunque solo una categoria haya coincidido por palabra: mejor
+// que decida el modelo, que tiene el umbral de confianza como defensa.
+function pareceMultiproducto(textoNormalizado) {
+  return textoNormalizado.includes(',') || /(?<![a-z0-9])y(?![a-z0-9])/.test(textoNormalizado);
+}
+
 function schema() {
   return {
     type: 'json_schema',
@@ -121,7 +129,7 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
   let clasificacion, rendimiento, metodo;
 
   const t = normalizar(descripcion);
-  const coincidencias = tabla.categorias.filter((c) => categoriaCoincide(t, c));
+  const coincidencias = pareceMultiproducto(t) ? [] : tabla.categorias.filter((c) => categoriaCoincide(t, c));
 
   if (coincidencias.length === 1) {
     const cat0 = coincidencias[0];
@@ -129,7 +137,7 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
     metodo = 'keywords';
   } else if (mock) {
-    const hit = tabla.categorias.find((c) => categoriaCoincide(t, c));
+    const hit = coincidencias[0];
     clasificacion = { producto_normalizado: descripcion, categoria_id: hit ? hit.id : 'otros', confianza: hit ? 0.9 : 0.2 };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: true };
     metodo = 'mock';
@@ -167,6 +175,7 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
     rendimiento,
     valorCIF: Math.round(valorCIF * 100) / 100,
     tipoValor,
+    supuestoFOB: tipoValor === 'FOB' ? m.estimacion_cif_desde_fob : null,
     metodo,
     confianza: clasificacion.confianza,
   };
@@ -198,7 +207,7 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
       tributos: { dai_pct: cat.dai_pct, itbms_pct: cat.itbms_pct, isc_pct: cat.isc_pct, iccdp_pct: cat.iccdp_pct },
       calculo: elegido,
       contrafactual: otro,
-      aviso: 'Estimacion orientativa contra el Arancel Nacional. No es un dictamen oficial de clasificacion.',
+      aviso: 'Estimacion orientativa contra el Arancel Nacional (solo tasas NMF, sin tratado preferencial). No es un dictamen oficial de clasificacion. Supuesto sin confirmar: el ISC no se incluye en la base del ITBMS.',
     };
   } catch (e) {
     if (e instanceof CategoriaNoVerificada) {

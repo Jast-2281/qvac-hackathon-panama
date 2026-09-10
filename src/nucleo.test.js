@@ -55,3 +55,16 @@ test('la negacion evita clasificar como camisetas', async () => {
   const r = await clasificar('no son camisetas, son zapatos');
   assert.notEqual(r.metodo, 'keywords');
 });
+
+test('una coma o "y" suelta evita el atajo por keywords (posible carga mixta)', async () => {
+  const conY = await clasificar('camisetas y zapatos');
+  const conComa = await clasificar('camisetas, zapatos');
+  assert.notEqual(conY.metodo, 'keywords');
+  assert.notEqual(conComa.metodo, 'keywords');
+});
+
+test('un "y" dentro de una palabra (whiskey) no dispara la guarda de multiproducto', async () => {
+  const r = await clasificar('una botella de whiskey');
+  assert.equal(r.metodo, 'keywords');
+  assert.equal(r.clasificacion.categoria_id, 'licores');
+});

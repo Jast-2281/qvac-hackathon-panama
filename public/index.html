@@ -181,7 +181,7 @@ function pintar(r) {
     <p class="prod">${r.categoria.nombre}</p>
     <p class="frac">Fracción ${r.categoria.fraccion} · DAI ${r.tributos.dai_pct}% · ITBMS ${r.tributos.itbms_pct}% · método ${r.metodo} · ${confianzaTexto(r)}</p>
     <table>
-      ${fila(`Valor CIF${r.tipoValor === 'FOB' ? ' (estimado desde FOB)' : ''}`, c.valorCIF)}
+      ${fila(`Valor CIF${r.supuestoFOB ? ` (estimado desde FOB: flete ${r.supuestoFOB.flete_pct}% + seguro ${r.supuestoFOB.seguro_pct}%)` : ''}`, c.valorCIF)}
       ${fila('DAI', c.dai)}
       ${c.isc ? fila('ISC', c.isc) : ''}
       ${fila('ITBMS', c.itbms)}

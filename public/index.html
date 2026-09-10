@@ -85,6 +85,8 @@
   .negado{padding:18px 16px}
   .negado h2{margin:0 0 8px;font:400 18px/1.3 var(--serif)}
   .negado span{font-size:13.5px;color:var(--tenue)}
+  .negado.rechazo{background:#F6EEEC}
+  .negado.rechazo h2{color:var(--nac)}
   .confirmar-botones{display:flex;gap:8px;margin-top:14px}
   .confirmar-botones button{flex:1;min-height:44px;padding:12px;border:1px solid var(--tinta);
        font:13.5px var(--sans);cursor:pointer;background:#fff;color:var(--tinta)}
@@ -144,6 +146,7 @@
 const $ = (s) => document.querySelector(s);
 let tipoValor = 'CIF', regimen = 'reexportacion';
 let limpiarConfirmacion = null;
+let categoriasConocidas = [];
 const money = (n) => n.toLocaleString('es-PA',{style:'currency',currency:'USD'});
 const moneyGrande = (n) => n.toLocaleString('es-PA',{style:'currency',currency:'USD',maximumFractionDigits:0,currencyDisplay:'narrowSymbol'});
 
@@ -198,6 +201,7 @@ $('#recalcular-ahora').onclick = () => $('#f').requestSubmit();
 fetch('/api/estado').then(r => r.json()).then(e => {
   $('#pt').classList.remove('off');
   $('#fr').textContent = `${e.modelo} · en este equipo · ${e.categorias.length} categorías verificadas`;
+  categoriasConocidas = e.categorias.map((c) => c.nombre);
   $('#b').disabled = false;
 }).catch(() => {
   $('#fr').textContent = 'No se pudo conectar con el servidor local.';
@@ -270,7 +274,7 @@ $('#f').onsubmit = async (ev) => {
   } catch (e) {
     snapshotVigente = null;
     $('#salida').classList.remove('obsoleto'); $('#banner-obsoleto').hidden = true;
-    $('#salida').innerHTML = `<div class="negado"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
+    $('#salida').innerHTML = `<div class="negado rechazo"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
   } finally {
     $('#b').disabled = false; $('#b').textContent = 'Calcular'; bloquearFormulario(false);
   }
@@ -336,7 +340,7 @@ function pintarConfirmacion(r) {
       )));
     } catch (e) {
       snapshotVigente = null;
-      $('#salida').innerHTML = `<div class="negado"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
+      $('#salida').innerHTML = `<div class="negado rechazo"><h2>No se pudo conectar con el servidor local.</h2><span>${e.message}</span></div>`;
     } finally {
       $('#b').disabled = false; bloquearFormulario(false);
     }
@@ -354,7 +358,7 @@ function pintar(r) {
 
   if (r.error) {
     snapshotVigente = null;
-    $('#salida').innerHTML = `<div class="negado"><h2>No se pudo calcular.</h2><span>${r.error}</span></div>`;
+    $('#salida').innerHTML = `<div class="negado rechazo"><h2>No se pudo calcular.</h2><span>${r.error}</span></div>`;
     desplazarASalida();
     return;
   }
@@ -362,13 +366,14 @@ function pintar(r) {
   if (r.requiereConfirmacion) { pintarConfirmacion(r); return; }
 
   if (!r.disponible) {
+    const listaCategorias = categoriasConocidas.length ? categoriasConocidas.join(', ') : 'unas pocas categorías';
     $('#salida').innerHTML = r.motivo === 'confianza insuficiente'
-      ? `<div class="negado">
-          <h2>No logré clasificar esto con certeza suficiente.</h2>
-          <span>Agrega más detalle sobre el producto.</span></div>`
-      : `<div class="negado">
+      ? `<div class="negado rechazo">
+          <h2>No estoy seguro de la categoría.</h2>
+          <span>Zarpe hoy solo tiene tarifas verificadas para: ${listaCategorias}. Si tu producto es uno de estos, describí el producto y el material con más detalle; si no es ninguno, Zarpe todavía no lo cubre.</span></div>`
+      : `<div class="negado rechazo">
           <h2>Zarpe no responde esto.</h2>
-          <span>${r.motivo} Clasificó como <b>${r.categoria.nombre}</b>.</span></div>`;
+          <span>${r.motivo}${r.categoria.id !== 'otros' ? ` Clasificó como <b>${r.categoria.nombre}</b>.` : ''}</span></div>`;
     marcarResultadoVigente();
     desplazarASalida();
     return;

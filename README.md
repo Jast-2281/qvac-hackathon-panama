@@ -101,11 +101,17 @@ LLAMA se comportó de forma más conservadora.
 - Es una estimación orientativa contra el Arancel Nacional, no un dictamen oficial
   de clasificación arancelaria.
 - El atajo por keywords rechaza subcadenas (p. ej. "ron" dentro de "drones"),
-  negaciones ("no son camisetas") y contradicciones de material/forma para
-  camisetas (poliéster, rollos de tela). No detecta carga mixta en una misma
-  descripción (p. ej. "camisetas y zapatos") ni palabras usadas en un contexto
-  no literal (p. ej. "fundas para camisetas"); esos casos deberían resolverse
-  limitando cada consulta a un solo producto, no agregando más reglas de keywords.
+  negaciones ("no son camisetas", "camisetas sin algodón") y contradicciones de
+  material/forma para camisetas (poliéster, seda, rollos de tela, entre otras).
+  Una coma, un "+", un ";", un salto de línea o un "y" suelto en la descripción
+  ("camisetas y zapatos") se tratan como posible carga mixta: no se usa el atajo
+  y, si igual el resultado final contradice la categoría o sugiere más de un
+  producto, el cálculo se bloquea aunque la clasificación venga del modelo.
+  Sigue sin detectar una palabra usada en un contexto no literal (p. ej. "fundas
+  para camisetas"); una regla para ese caso rompería descripciones válidas como
+  "camisetas para hombre". Ese caso debería resolverse limitando cada consulta
+  a un solo producto y confirmando sus atributos, no agregando más reglas de
+  keywords.
 
 ## Evidencia de inferencia local
 

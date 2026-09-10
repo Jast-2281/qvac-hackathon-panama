@@ -124,6 +124,8 @@ fetch('/api/estado').then(r => r.json()).then(e => {
   $('#pt').classList.remove('off');
   $('#fr').textContent = `${e.modelo} · en este equipo · ${e.categorias.length} categorías verificadas`;
   $('#b').disabled = false;
+}).catch(() => {
+  $('#fr').textContent = 'No se pudo conectar con el servidor local.';
 });
 
 $('#f').onsubmit = async (ev) => {

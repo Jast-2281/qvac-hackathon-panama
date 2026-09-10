@@ -65,21 +65,42 @@ function contieneKeyword(textoNormalizado, keyword) {
   return false;
 }
 
-// Una categoria "coincide" por keywords solo si ademas no aparece ninguna de
-// sus palabras de exclusion (materia prima o material que contradice la
-// fraccion arancelaria de la categoria, ej. "poliester" para camisetas de algodon).
-function categoriaCoincide(textoNormalizado, categoria) {
+function materialNegado(textoNormalizado, material) {
+  const k = escaparRegex(normalizar(material));
+  const re = new RegExp(`(?<![a-z0-9])${k}(?![a-z0-9])`, 'g');
+  let m;
+  while ((m = re.exec(textoNormalizado))) {
+    if (precedeNegacion(textoNormalizado, m.index)) return true;
+  }
+  return false;
+}
+
+// Una categoria queda "contradicha" por el texto si aparece alguna de sus
+// palabras de exclusion (material o forma que no corresponde a la fraccion,
+// ej. "poliester" o "seda" para camisetas de algodon) o si se niega
+// explicitamente el material que la categoria requiere (ej. "camisetas sin
+// algodon"). Esto se usa tanto para descartar el atajo por keywords como,
+// mas abajo, como control posterior sobre la categoria que haya elegido el
+// modelo: detectar la contradiccion no sirve de nada si no bloquea el calculo.
+function categoriaContradicha(textoNormalizado, categoria) {
   const excluye = categoria.excluye ?? [];
-  if (excluye.some((k) => contieneKeyword(textoNormalizado, k))) return false;
+  if (excluye.some((k) => contieneKeyword(textoNormalizado, k))) return true;
+  if (categoria.materialRequerido && materialNegado(textoNormalizado, categoria.materialRequerido)) return true;
+  return false;
+}
+
+function categoriaCoincide(textoNormalizado, categoria) {
+  if (categoriaContradicha(textoNormalizado, categoria)) return false;
   return categoria.keywords.some((k) => contieneKeyword(textoNormalizado, k));
 }
 
-// Una coma o un "y" suelto sugiere que la descripcion junta mas de un
-// producto (ej. "camisetas y zapatos"). En ese caso no confiamos en el atajo
-// por keywords aunque solo una categoria haya coincidido por palabra: mejor
-// que decida el modelo, que tiene el umbral de confianza como defensa.
+// Una coma, un "+"/";"/salto de linea, o un "y" suelto sugieren que la
+// descripcion junta mas de un producto (ej. "camisetas y zapatos",
+// "camisetas; zapatos"). En ese caso no confiamos en el atajo por keywords
+// aunque solo una categoria haya coincidido por palabra: mejor que decida el
+// modelo, que tiene el umbral de confianza como defensa.
 function pareceMultiproducto(textoNormalizado) {
-  return textoNormalizado.includes(',') || /(?<![a-z0-9])y(?![a-z0-9])/.test(textoNormalizado);
+  return /[,;+\n]/.test(textoNormalizado) || /(?<![a-z0-9])y(?![a-z0-9])/.test(textoNormalizado);
 }
 
 function schema() {
@@ -179,6 +200,16 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
     metodo,
     confianza: clasificacion.confianza,
   };
+
+  // Control posterior a la clasificacion, sin importar si la categoria vino del
+  // atajo por keywords o del modelo: detectar una contradiccion de material o
+  // una carga mixta no sirve de nada si no bloquea el calculo tambien aqui.
+  if (categoriaContradicha(t, cat) || pareceMultiproducto(t)) {
+    return {
+      ...base, disponible: false,
+      motivo: 'La descripcion contradice la categoria o sugiere mas de un producto. Separa o aclara la descripcion.',
+    };
+  }
 
   if (metodo === 'modelo' && clasificacion.confianza < 0.6) {
     return { ...base, disponible: false, motivo: 'confianza insuficiente' };

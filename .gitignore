@@ -3,3 +3,4 @@ node_modules/
 qvac.config.json
 *.log
 .DS_Store
+.impeccable/

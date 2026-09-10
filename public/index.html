@@ -150,18 +150,29 @@ async function enviarEstimacion(extra = {}, descripcionForzada = null) {
   return { ...r, _descripcionEnviada: descripcion };
 }
 
+// Bloquea todo el formulario mientras hay una solicitud pendiente: el
+// resultado siempre corresponde a los valores que se enviaron, asi que
+// dejar editar valor/gastos/regimen mientras se espera podria mostrar en
+// pantalla campos distintos a los que produjeron el resultado.
+function bloquearFormulario(bloqueado) {
+  $('#d').disabled = bloqueado;
+  $('#v').disabled = bloqueado;
+  $('#g').disabled = bloqueado;
+  document.querySelectorAll('[data-tv], [data-rg]').forEach((b) => { b.disabled = bloqueado; });
+}
+
 $('#f').onsubmit = async (ev) => {
   ev.preventDefault();
   const d = $('#d').value.trim();
   if (!d) return;
   limpiarConfirmacion?.(); limpiarConfirmacion = null;
-  $('#b').disabled = true; $('#b').textContent = 'Calculando…'; $('#d').disabled = true;
+  $('#b').disabled = true; $('#b').textContent = 'Calculando…'; bloquearFormulario(true);
   try {
     pintar(await enviarEstimacion());
   } catch (e) {
     $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
   } finally {
-    $('#b').disabled = false; $('#b').textContent = 'Calcular'; $('#d').disabled = false;
+    $('#b').disabled = false; $('#b').textContent = 'Calcular'; bloquearFormulario(false);
   }
 };
 
@@ -215,7 +226,7 @@ function pintarConfirmacion(r) {
   $('#confirmar-si').onclick = async () => {
     limpiarEsta();
     $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true;
-    $('#b').disabled = true; $('#d').disabled = true;
+    $('#b').disabled = true; bloquearFormulario(true);
     try {
       pintar(await enviarEstimacion(
         { categoriaConfirmada: r.requiereConfirmacion.categoriaId, descripcionConfirmada: descripcionPreguntada },
@@ -224,7 +235,7 @@ function pintarConfirmacion(r) {
     } catch (e) {
       $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
     } finally {
-      $('#b').disabled = false; $('#d').disabled = false;
+      $('#b').disabled = false; bloquearFormulario(false);
     }
   };
   $('#confirmar-no').onclick = () => {

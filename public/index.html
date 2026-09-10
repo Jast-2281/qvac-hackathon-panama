@@ -134,14 +134,20 @@ fetch('/api/estado').then(r => r.json()).then(e => {
   $('#fr').textContent = 'No se pudo conectar con el servidor local.';
 });
 
-async function enviarEstimacion(extra = {}) {
-  return fetch('/api/estimar', {
+// Captura la descripcion en el momento del envio (no cuando llega la
+// respuesta): si el usuario edita el campo mientras espera, el resultado
+// debe seguir describiendo lo que realmente se envio, no lo que haya quedado
+// escrito despues. r._descripcionEnviada es esa foto congelada.
+async function enviarEstimacion(extra = {}, descripcionForzada = null) {
+  const descripcion = descripcionForzada ?? $('#d').value.trim();
+  const r = await fetch('/api/estimar', {
     method: 'POST', headers: {'content-type':'application/json'},
     body: JSON.stringify({
-      descripcion: $('#d').value.trim(), valor: +$('#v').value, tipoValor, regimen,
+      descripcion, valor: +$('#v').value, tipoValor, regimen,
       gastosFijos: +$('#g').value, ...extra,
     })
   }).then(x => x.json());
+  return { ...r, _descripcionEnviada: descripcion };
 }
 
 $('#f').onsubmit = async (ev) => {
@@ -149,13 +155,13 @@ $('#f').onsubmit = async (ev) => {
   const d = $('#d').value.trim();
   if (!d) return;
   limpiarConfirmacion?.(); limpiarConfirmacion = null;
-  $('#b').disabled = true; $('#b').textContent = 'Calculando…';
+  $('#b').disabled = true; $('#b').textContent = 'Calculando…'; $('#d').disabled = true;
   try {
     pintar(await enviarEstimacion());
   } catch (e) {
     $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
   } finally {
-    $('#b').disabled = false; $('#b').textContent = 'Calcular';
+    $('#b').disabled = false; $('#b').textContent = 'Calcular'; $('#d').disabled = false;
   }
 };
 
@@ -179,10 +185,10 @@ function confianzaTexto(r) {
 function pintarConfirmacion(r) {
   limpiarConfirmacion?.();
 
-  // La pregunta vale solo para el texto que la genero: si se edita la
-  // descripcion despues de pedir confirmar, esta tarjeta queda invalida y no
-  // debe poder usarse para calcular la descripcion nueva.
-  const descripcionPreguntada = $('#d').value;
+  // La pregunta vale solo para el texto que realmente se envio y genero esta
+  // respuesta (no lo que haya en el campo ahora mismo: pudo cambiar mientras
+  // esperabamos la respuesta del servidor).
+  const descripcionPreguntada = r._descripcionEnviada;
 
   $('#salida').innerHTML = `<div class="negado">
     <p>¿Es correcto?</p>
@@ -196,25 +202,33 @@ function pintarConfirmacion(r) {
   const invalidarSiCambia = () => {
     if ($('#d').value !== descripcionPreguntada) {
       $('#salida').innerHTML = `<div class="vacio">La descripción cambió — vuelve a calcular.</div>`;
-      limpiarConfirmacion?.(); limpiarConfirmacion = null;
+      limpiarEsta();
     }
   };
+  const limpiarEsta = () => {
+    $('#d').removeEventListener('input', invalidarSiCambia);
+    if (limpiarConfirmacion === limpiarEsta) limpiarConfirmacion = null;
+  };
   $('#d').addEventListener('input', invalidarSiCambia);
-  limpiarConfirmacion = () => $('#d').removeEventListener('input', invalidarSiCambia);
+  limpiarConfirmacion = limpiarEsta;
 
   $('#confirmar-si').onclick = async () => {
-    $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true; $('#b').disabled = true;
+    limpiarEsta();
+    $('#confirmar-si').disabled = true; $('#confirmar-no').disabled = true;
+    $('#b').disabled = true; $('#d').disabled = true;
     try {
-      pintar(await enviarEstimacion({ categoriaConfirmada: r.requiereConfirmacion.categoriaId }));
+      pintar(await enviarEstimacion(
+        { categoriaConfirmada: r.requiereConfirmacion.categoriaId, descripcionConfirmada: descripcionPreguntada },
+        descripcionPreguntada,
+      ));
     } catch (e) {
       $('#salida').innerHTML = `<div class="negado"><p>No se pudo conectar con el servidor local.</p><span>${e.message}</span></div>`;
     } finally {
-      limpiarConfirmacion?.(); limpiarConfirmacion = null;
-      $('#b').disabled = false;
+      $('#b').disabled = false; $('#d').disabled = false;
     }
   };
   $('#confirmar-no').onclick = () => {
-    limpiarConfirmacion?.(); limpiarConfirmacion = null;
+    limpiarEsta();
     $('#salida').innerHTML = `<div class="vacio">Aclara el producto y el material en la descripción, y vuelve a calcular.</div>`;
     $('#d').focus();
   };

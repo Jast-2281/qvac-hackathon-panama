@@ -7,10 +7,13 @@ export function validarEntrada(cuerpo) {
     return 'el cuerpo debe ser un objeto JSON';
   }
 
-  const { descripcion, valor, tipoValor, regimen, gastosFijos = 0, categoriaConfirmada } = cuerpo;
+  const { descripcion, valor, tipoValor, regimen, gastosFijos = 0, categoriaConfirmada, descripcionConfirmada } = cuerpo;
 
   if (categoriaConfirmada !== undefined && typeof categoriaConfirmada !== 'string') {
     return 'categoriaConfirmada debe ser un texto';
+  }
+  if (descripcionConfirmada !== undefined && typeof descripcionConfirmada !== 'string') {
+    return 'descripcionConfirmada debe ser un texto';
   }
 
   if (typeof descripcion !== 'string' || descripcion.trim() === '') {

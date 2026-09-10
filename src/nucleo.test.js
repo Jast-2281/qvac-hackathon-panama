@@ -4,8 +4,8 @@ import * as nucleo from './nucleo.js';
 
 before(async () => { await nucleo.iniciar({ mock: true }); });
 
-function clasificar(descripcion, categoriaConfirmada = null) {
-  return nucleo.estimar({ descripcion, valor: 1000, tipoValor: 'CIF', regimen: 'reexportacion', mock: true, categoriaConfirmada });
+function clasificar(descripcion, opciones = {}) {
+  return nucleo.estimar({ descripcion, valor: 1000, tipoValor: 'CIF', regimen: 'reexportacion', mock: true, ...opciones });
 }
 
 // Clasifica y, si pide confirmacion, confirma con la misma descripcion y
@@ -13,7 +13,10 @@ function clasificar(descripcion, categoriaConfirmada = null) {
 async function clasificarYConfirmar(descripcion) {
   const r1 = await clasificar(descripcion);
   if (!r1.requiereConfirmacion) return r1;
-  return clasificar(descripcion, r1.requiereConfirmacion.categoriaId);
+  return clasificar(descripcion, {
+    categoriaConfirmada: r1.requiereConfirmacion.categoriaId,
+    descripcionConfirmada: descripcion,
+  });
 }
 
 test('drones no coincide con licores por subcadena de "ron"', async () => {
@@ -63,8 +66,9 @@ test('camisetas de algodon coincide por keywords pero pide confirmar antes de ca
   assert.equal(r.requiereConfirmacion.categoriaId, 'camisetas');
 });
 
-test('camisetas de algodon calcula una vez confirmada la categoria', async () => {
-  const r = await clasificar('500 camisetas de algodon', 'camisetas');
+test('camisetas de algodon calcula una vez confirmada la categoria (mismo texto)', async () => {
+  const d = '500 camisetas de algodon';
+  const r = await clasificar(d, { categoriaConfirmada: 'camisetas', descripcionConfirmada: d });
   assert.equal(r.metodo, 'confirmado');
   assert.equal(r.disponible, true);
 });
@@ -78,7 +82,7 @@ test('una botella de whiskey coincide por keywords, pide confirmar y calcula', a
 
 // La confirmacion ya no es exclusiva de camisetas: el mismo riesgo de
 // contexto (accesorio, ingrediente, mera mencion) aplica a cigarrillos y
-// licores. Reproduce la tabla de la tercera revision de Codex.
+// licores.
 test('fundas para cigarrillos pide confirmar en vez de calcular directo', async () => {
   const r = await clasificar('fundas para cigarrillos');
   assert.equal(r.disponible, false);
@@ -97,11 +101,26 @@ test('esencia de ron para reposteria pide confirmar en vez de calcular directo',
   assert.equal(r.requiereConfirmacion?.categoriaId, 'licores');
 });
 
-// Una confirmacion no se puede reutilizar sobre una descripcion distinta a
-// la que la genero (ej. confirmar "camisetas" y luego, sin volver a pedir
-// confirmacion, enviar "drones" con esa misma categoriaConfirmada).
-test('una categoriaConfirmada no aplica si el texto actual no la respalda', async () => {
-  const r = await clasificar('drones', 'camisetas');
+// Regresion encontrada en la 4a revision de Codex: una clasificacion que
+// viene SOLO del modelo (sin ninguna keyword propia de la categoria) debe
+// poder confirmarse igual. Exigir coincidencia de keywords para aceptar la
+// confirmacion bloqueaba para siempre justo los casos que mas necesitan el
+// modelo, porque nunca iban a tener keywords que coincidan.
+test('una clasificacion sin ninguna keyword propia se puede confirmar y calcula (no vuelve a preguntar)', async () => {
+  const d = 'prendas superiores de punto de fibra de algodon';
+  const r = await clasificar(d, { categoriaConfirmada: 'camisetas', descripcionConfirmada: d });
+  assert.equal(r.metodo, 'confirmado');
+  assert.equal(r.disponible, true);
+  assert.equal(r.requiereConfirmacion, undefined);
+});
+
+// Una confirmacion solo es valida si descripcionConfirmada coincide con la
+// descripcion que efectivamente se esta enviando ahora. Si no coincide (el
+// usuario edito el campo despues de que se le pidio confirmar, o se intenta
+// reusar una confirmacion vieja sobre un texto distinto), se ignora y se
+// reclasifica desde cero.
+test('una confirmacion no aplica si descripcionConfirmada no coincide con la descripcion actual', async () => {
+  const r = await clasificar('drones', { categoriaConfirmada: 'camisetas', descripcionConfirmada: '500 camisetas de algodon' });
   assert.notEqual(r.metodo, 'confirmado');
   assert.equal(r.disponible, false);
 });
@@ -134,8 +153,8 @@ test('camisetas sin algodon no calcula (se niega el material requerido)', async 
   assert.equal(r.disponible, false);
 });
 
-// La carga mixta ahora se corta antes de clasificar (metodo "bloqueado"):
-// no vale la pena invocar el modelo si ya se sabe que se va a rechazar.
+// La carga mixta se corta antes de clasificar (metodo "bloqueado"): no vale
+// la pena invocar el modelo si ya se sabe que se va a rechazar.
 test('no son camisetas, son zapatos no calcula (negacion + coma)', async () => {
   const r = await clasificar('no son camisetas, son zapatos');
   assert.equal(r.metodo, 'bloqueado');
@@ -174,8 +193,9 @@ test('camisetas y zapatos en lineas separadas no calcula (salto de linea como se
 
 // Una confirmacion previa tampoco puede saltarse el bloqueo por carga mixta:
 // se corta antes de siquiera mirar categoriaConfirmada.
-test('una categoriaConfirmada no salta el bloqueo por carga mixta', async () => {
-  const r = await clasificar('camisetas + zapatos', 'camisetas');
+test('una confirmacion no salta el bloqueo por carga mixta', async () => {
+  const d = 'camisetas + zapatos';
+  const r = await clasificar(d, { categoriaConfirmada: 'camisetas', descripcionConfirmada: d });
   assert.equal(r.metodo, 'bloqueado');
   assert.equal(r.disponible, false);
 });

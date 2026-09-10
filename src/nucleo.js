@@ -143,13 +143,21 @@ function sistema() {
  * @param {'nacionalizacion'|'reexportacion'} p.regimen
  * @param {number} [p.gastosFijos]
  * @param {string} [p.categoriaConfirmada]  Id de categoria que el usuario ya
- *   confirmo en una vuelta anterior (ver `cat.confirmar`). Solo se acepta si
- *   la descripcion ACTUAL sigue coincidiendo con esa categoria: una
- *   confirmacion vieja no se puede reutilizar sobre una descripcion editada
- *   despues de pedirla (ej. confirmar "camisetas" y luego cambiar el texto
- *   a "drones" antes de enviar).
+ *   confirmo en una vuelta anterior (ver `cat.confirmar`).
+ * @param {string} [p.descripcionConfirmada]  La descripcion EXACTA para la que
+ *   se pidio esa confirmacion. Solo se acepta categoriaConfirmada si coincide
+ *   con `descripcion` (comparacion de texto, no de keywords): una
+ *   clasificacion que vino del modelo puede no tener ninguna keyword propia,
+ *   asi que exigir coincidencia de keywords para confirmarla bloquearia para
+ *   siempre justo los casos que mas necesitan el modelo. Lo que sí evita es
+ *   reutilizar una confirmacion vieja sobre una descripcion editada despues
+ *   de pedirla (ej. confirmar "camisetas" y luego cambiar el texto a
+ *   "drones" antes de enviar: ya no coincide con descripcionConfirmada).
  */
-export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFijos = 0, mock = false, categoriaConfirmada = null }) {
+export async function estimar({
+  descripcion, valor, tipoValor, regimen, gastosFijos = 0, mock = false,
+  categoriaConfirmada = null, descripcionConfirmada = null,
+}) {
   const m = tabla._meta;
   const valorCIF = tipoValor === 'FOB' ? estimarCIF(valor, m.estimacion_cif_desde_fob) : valor;
   const t = normalizar(descripcion);
@@ -177,8 +185,11 @@ export async function estimar({ descripcion, valor, tipoValor, regimen, gastosFi
 
   const coincidencias = tabla.categorias.filter((c) => categoriaCoincide(t, c));
 
-  if (categoriaConfirmada && tabla.categorias.some((c) => c.id === categoriaConfirmada && categoriaCoincide(t, c))) {
-    const catConfirmada = tabla.categorias.find((c) => c.id === categoriaConfirmada);
+  const catConfirmada = categoriaConfirmada && descripcionConfirmada === descripcion
+    ? tabla.categorias.find((c) => c.id === categoriaConfirmada)
+    : null;
+
+  if (catConfirmada) {
     clasificacion = { producto_normalizado: descripcion, categoria_id: catConfirmada.id, confianza: null };
     rendimiento = { ttft_ms: null, tokens: null, ms_total: null, tokens_por_seg: null, mock: false };
     metodo = 'confirmado';

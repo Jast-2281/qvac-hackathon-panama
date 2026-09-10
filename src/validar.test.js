@@ -37,3 +37,12 @@ test('rechaza gastosFijos negativo', () => {
 test('rechaza regimen invalido', () => {
   assert.ok(validarEntrada({ ...base, regimen: 'transito' }));
 });
+
+test('acepta categoriaConfirmada y descripcionConfirmada como texto', () => {
+  assert.equal(validarEntrada({ ...base, categoriaConfirmada: 'camisetas', descripcionConfirmada: 'camisetas' }), null);
+});
+
+test('rechaza categoriaConfirmada o descripcionConfirmada no textuales', () => {
+  assert.ok(validarEntrada({ ...base, categoriaConfirmada: 42 }));
+  assert.ok(validarEntrada({ ...base, descripcionConfirmada: 42 }));
+});

@@ -31,7 +31,12 @@
        border-radius:0;font:15px/1.4 var(--sans);color:var(--tinta)}
   textarea{resize:vertical;min-height:66px}
   input[type=number]{font-family:var(--mono)}
+  .campo-dinero{position:relative}
+  .campo-dinero::before{content:"$";position:absolute;left:10px;top:50%;transform:translateY(-50%);
+       color:var(--tenue);font:15px/1.4 var(--mono);pointer-events:none}
+  .campo-dinero input{padding-left:22px}
   .fila{display:grid;grid-template-columns:1fr 92px;gap:8px}
+  .fila .campo-dinero{align-self:center}
   .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--linea);background:#fff}
   .seg button{min-height:44px;padding:12px 6px;border:0;background:#fff;font:13.5px var(--sans);
        color:var(--tenue);cursor:pointer}
@@ -111,11 +116,11 @@
 
   <form id="f">
     <label for="d">Qué estás trayendo</label>
-    <textarea id="d" placeholder="200 cajas de whisky escocés desde Escocia"></textarea>
+    <textarea id="d" placeholder="Describe la carga: qué es, cantidad, origen…"></textarea>
 
     <label for="v">Valor declarado</label>
     <div class="fila">
-      <input id="v" type="number" min="0" step="1" value="5000">
+      <div class="campo-dinero"><input id="v" type="number" min="0" step="1" value="5000"></div>
       <div class="seg" role="group" aria-label="Tipo de valor declarado">
         <button type="button" data-tv="CIF" aria-pressed="true">CIF</button>
         <button type="button" data-tv="FOB" aria-pressed="false">FOB</button>
@@ -123,7 +128,7 @@
     </div>
 
     <label for="g">Gastos de agente y puerto</label>
-    <input id="g" type="number" min="0" step="1" value="400">
+    <div class="campo-dinero"><input id="g" type="number" min="0" step="1" value="400"></div>
 
     <label id="rg-label">A dónde va la mercancía</label>
     <div class="seg" role="group" aria-labelledby="rg-label">
@@ -410,13 +415,16 @@ function pintar(r) {
 
   if (!r.disponible) {
     const listaCategorias = categoriasConocidas.length ? categoriasConocidas.join(', ') : 'unas pocas categorías';
+    const perfRechazo = r.metodo === 'modelo' ? perfTexto(r) : '';
     $('#salida').innerHTML = r.motivo === 'confianza insuficiente'
       ? `<div class="negado rechazo">
           <h2>No estoy seguro de la categoría.</h2>
-          <span>Zarpe hoy solo tiene tarifas verificadas para: ${listaCategorias}. Si tu producto es uno de estos, describe el producto y el material con más detalle; si no es ninguno, Zarpe todavía no lo cubre.</span></div>`
+          <span>Zarpe hoy solo tiene tarifas verificadas para: ${listaCategorias}. Si tu producto es uno de estos, describe el producto y el material con más detalle; si no es ninguno, Zarpe todavía no lo cubre.</span>
+          ${perfRechazo ? `<p class="perf">${perfRechazo}</p>` : ''}</div>`
       : `<div class="negado rechazo">
           <h2>Zarpe no responde esto.</h2>
-          <span>${r.motivo}${r.categoria.id !== 'otros' ? ` Clasificó como <b>${r.categoria.nombre}</b>.` : ''}</span></div>`;
+          <span>${r.motivo}${r.categoria.id !== 'otros' ? ` Clasificó como <b>${r.categoria.nombre}</b>.` : ''}</span>
+          ${perfRechazo ? `<p class="perf">${perfRechazo}</p>` : ''}</div>`;
     marcarResultadoVigente();
     desplazarASalida();
     return;
